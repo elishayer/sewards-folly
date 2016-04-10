@@ -87,20 +87,23 @@ public final class MinimaxGamer extends StateMachineGamer
     	int score = 0;
 
     	for (int i = 0; i < actions.size(); i++) {
-    		int result = minScore(machine, state, roles, role, actions.get(i));
+    		int result = minScore(machine, state, roles, role, actions.get(i), 0, 100);
+    		if (result == 100) {
+    			return actions.get(i);
+    		}
     		if (result > score) {
     			score = result;
     			action = actions.get(i);
     		}
     	}
-
     	return action;
     }
 
-    private int minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    private int minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, int alpha, int beta) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
     	Role opponent = getOpponentRole(roles, role);
     	List<Move> actions = machine.findLegals(opponent, state);
-    	int score = 100;
+
     	for (int i = 0; i < actions.size(); i++) {
     		List<Move> move = new ArrayList<Move>();
     		if (role.equals(roles.get(0))) {
@@ -111,29 +114,31 @@ public final class MinimaxGamer extends StateMachineGamer
     			move.add(action);
     		}
     		MachineState newState = machine.findNext(move, state);
-    		int result = maxScore(machine, roles, role, newState);
-    		if (result < score) {
-    			score = result;
+    		int result = maxScore(machine, roles, role, newState, alpha, beta);
+    		beta = Math.min(beta, result);
+    		if (beta <= alpha) {
+    			return alpha;
     		}
     	}
-    	return score;
+    	return beta;
     }
 
-    private int maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    private int maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state, int alpha, int beta) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
     	if (machine.findTerminalp(state)) {
     		return machine.findReward(role, state);
     	}
 
     	List<Move> actions = machine.findLegals(role, state);
-    	int score = 0;
 
     	for (int i = 0; i < actions.size(); i++) {
-    		int result = minScore(machine, state, roles, role, actions.get(i));
-    		if (result > score) {
-    			score = result;
+    		int result = minScore(machine, state, roles, role, actions.get(i), alpha, beta);
+    		alpha = Math.max(alpha, result);
+    		if (alpha >= beta) {
+    			return beta;
     		}
     	}
-    	return score;
+    	return alpha;
     }
 
     // get the opponent as the player that is not this machine,
