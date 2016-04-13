@@ -100,7 +100,6 @@ public final class MinimaxGamer extends StateMachineGamer
     }
 
     private int minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, int alpha, int beta) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
     	Role opponent = getOpponentRole(roles, role);
     	List<Move> actions = machine.findLegals(opponent, state);
 

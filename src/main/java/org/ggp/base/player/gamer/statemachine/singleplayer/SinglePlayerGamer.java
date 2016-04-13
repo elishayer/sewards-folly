@@ -1,6 +1,6 @@
 package org.ggp.base.player.gamer.statemachine.singleplayer;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.ggp.base.apps.player.detail.DetailPanel;
@@ -72,24 +72,31 @@ public final class SinglePlayerGamer extends StateMachineGamer
 	private result bestplan(Role role, StateMachine machine, MachineState state) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		if(machine.isTerminal(state)) {
 			result r = new result();
+			r.subplan = new ArrayList<Move>();
 			r.score = machine.findReward(role, state);
 			return r;
 		}
 		List<Move> moves = machine.findLegals(role, state);
-		System.out.println(moves);
-		result r = bestplan(role, machine, machine.findNext(Arrays.asList(moves.get(0)), state));
+		List<Move> m = new ArrayList<Move>();
+		m.add(moves.get(0));
+		result r = bestplan(role, machine, machine.findNext(m, state));
 		int score = r.score;
-		List<Move> plan = r.subplan;
-		plan.set(plan.size(), moves.get(0));
-		for(int i = 0; i < moves.size(); i++) {
-			r = bestplan(role, machine, machine.findNext(Arrays.asList(moves.get(i)), state));
+		List<Move> subplan = r.subplan;
+		subplan.add(0, moves.get(0));
+		for(int i = 1; i < moves.size(); i++) {
+			m.set(0, moves.get(i));
+			r = bestplan(role, machine, machine.findNext(m, state));
 			if(r.score > score) {
 				score = r.score;
-				plan = r.subplan;
-				plan.set(plan.size(), moves.get(i));
+				subplan = r.subplan;
+				subplan.add(0, moves.get(i));
 			}
+
 		}
-		return r;
+		result best = new result();
+		best.score = score;
+		best.subplan = subplan;
+		return best;
 	}
 
 
@@ -98,6 +105,7 @@ public final class SinglePlayerGamer extends StateMachineGamer
     {
 		long start = System.currentTimeMillis();
 		System.out.println(plan);
+		System.out.println("Step: "+ step);
 
 		Move move = plan.get(step);
 		step++;
