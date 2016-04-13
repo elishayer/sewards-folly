@@ -100,19 +100,10 @@ public final class MinimaxGamer extends StateMachineGamer
     }
 
     private int minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, int alpha, int beta) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-    	Role opponent = getOpponentRole(roles, role);
-    	List<Move> actions = machine.findLegals(opponent, state);
+    	List<List<Move> > actions = getActions(roles, role, action, machine, state);
 
     	for (int i = 0; i < actions.size(); i++) {
-    		List<Move> move = new ArrayList<Move>();
-    		if (role.equals(roles.get(0))) {
-    			move.add(action);
-    			move.add(actions.get(i));
-    		} else {
-    			move.add(actions.get(i));
-    			move.add(action);
-    		}
-    		MachineState newState = machine.findNext(move, state);
+    		MachineState newState = machine.findNext(actions.get(i), state);
     		int result = maxScore(machine, roles, role, newState, alpha, beta);
     		beta = Math.min(beta, result);
     		if (beta <= alpha) {
@@ -138,6 +129,39 @@ public final class MinimaxGamer extends StateMachineGamer
     		}
     	}
     	return alpha;
+    }
+
+    // get a list of all possible permutations of actions
+    // by all players (possible more than 2)
+    private List<List<Move> > getActions(List<Role> roles, Role role, Move action,
+    		StateMachine machine, MachineState state) throws MoveDefinitionException {
+    	List<List<Move> > actions = new ArrayList<List<Move> >();
+    	List<Move> curr = new ArrayList<Move>();
+    	recursiveActionHelper(roles, role, action, machine, state, 0, curr, actions);
+    	return actions;
+    }
+
+    // recursive action possibility builder
+    private void recursiveActionHelper(List<Role> roles, Role role,
+    		Move action, StateMachine machine, MachineState state, int i,
+    		List<Move> curr, List<List<Move> > actions) throws MoveDefinitionException {
+    	if (i == roles.size()) {
+    		actions.add(curr);
+    		return;
+    	} else {
+    		if (roles.get(i).equals(role)) {
+				List<Move> dest = new ArrayList<Move>(curr);
+    			dest.add(action);
+    			recursiveActionHelper(roles, role, action, machine, state, i + 1, dest, actions);
+    		} else {
+    			List<Move> possibleActions = machine.getLegalMoves(state, roles.get(i));
+    			for (int j = 0; j < possibleActions.size(); j++) {
+    				List<Move> dest = new ArrayList<Move>(curr);
+    				dest.add(possibleActions.get(j));
+    				recursiveActionHelper(roles, role, action, machine, state, i + 1, dest, actions);
+    			}
+    		}
+    	}
     }
 
     // get the opponent as the player that is not this machine,
