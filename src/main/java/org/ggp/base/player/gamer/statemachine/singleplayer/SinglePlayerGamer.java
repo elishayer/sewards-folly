@@ -96,6 +96,7 @@ public final class SinglePlayerGamer extends StateMachineGamer
 		result best = new result();
 		best.score = score;
 		best.subplan = subplan;
+		//System.out.println(subplan);
 		return best;
 	}
 
@@ -104,8 +105,8 @@ public final class SinglePlayerGamer extends StateMachineGamer
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
 		long start = System.currentTimeMillis();
-		System.out.println(plan);
-		System.out.println("Step: "+ step);
+		//System.out.println(plan);
+		//System.out.println("Step: "+ step);
 
 		Move move = plan.get(step);
 		step++;
