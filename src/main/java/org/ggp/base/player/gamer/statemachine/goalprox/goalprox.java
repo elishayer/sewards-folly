@@ -1,7 +1,10 @@
 package org.ggp.base.player.gamer.statemachine.goalprox;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 import org.ggp.base.apps.player.detail.DetailPanel;
 import org.ggp.base.apps.player.detail.SimpleDetailPanel;
@@ -9,6 +12,7 @@ import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -22,6 +26,8 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public final class goalprox extends StateMachineGamer
 {
 	static long SEARCH_TIME = 1500;
+	MachineState bestTerminal;
+	int bestTerminalScore;
 
 	@Override
 	public String getName() {
@@ -56,8 +62,31 @@ public final class goalprox extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-		// no metagaming for the minimax gamer
+		bestTerminalScore = 0;
+		float find_terminal_time  = 4 * (timeout - System.currentTimeMillis()) / 5;
+
+		while(timeout - System.currentTimeMillis() > find_terminal_time) {
+			searchForTerminal(getStateMachine(), getCurrentState(), getRole());
+		}
     }
+
+	private void searchForTerminal(StateMachine machine, MachineState state, Role role) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException
+	{
+		if(machine.findTerminalp(state)) {
+			if(machine.findReward(role, state) > bestTerminalScore || bestTerminal == null) {
+				bestTerminalScore = machine.findReward(role, state);
+				bestTerminal = state;
+			}
+			return;
+		}
+		List<Move> actions = new ArrayList<Move>();
+		List<Role> roles = machine.getRoles();
+		for (int i = 0; i < roles.size(); i++) {
+			List<Move> legals = machine.findLegals(roles.get(i), state);
+			actions.add(legals.get(new Random().nextInt(legals.size())));
+		}
+		searchForTerminal(machine, machine.findNext(actions, state), role);
+	}
 
     @Override
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
@@ -116,13 +145,21 @@ public final class goalprox extends StateMachineGamer
     }
 
     private float maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state, float alpha, float beta, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
     	if (machine.findTerminalp(state)) {
     		return machine.findReward(role, state);
     	}
 
     	if(timeout - System.currentTimeMillis() < SEARCH_TIME) {
-    		System.out.println(machine.findReward(role, state));
+
+    		Set<GdlSentence> contents = state.getContents();
+    		Set<GdlSentence> bestContents = bestTerminal.getContents();
+
+    		Set<GdlSentence> intersection = new HashSet<GdlSentence>(contents);
+    		intersection.retainAll(bestContents);
+
+    		//return intersection.size() / (contents.size() + bestContents.size() - intersection.size());
+
+    		//return reward of nonterminal state
     		return machine.findReward(role, state);
     	}
 

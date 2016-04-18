@@ -21,7 +21,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 public final class bounded_basic extends StateMachineGamer
 {
-	static long SEARCH_TIME = 15000;
+	static long SEARCH_TIME = 1500;
 
 	@Override
 	public String getName() {

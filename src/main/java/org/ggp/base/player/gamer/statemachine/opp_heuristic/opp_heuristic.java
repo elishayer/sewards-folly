@@ -130,7 +130,6 @@ public final class opp_heuristic extends StateMachineGamer
     	}
 
     	if(timeout - System.currentTimeMillis() < SEARCH_TIME) {
-    		System.out.println(machine.findLegals(role, state).size() / opp_max_moves);
     		int opp_moves = numOppMoves(machine, roles, role, state);
     		return 1 - (opp_moves / opp_max_moves);
     	}

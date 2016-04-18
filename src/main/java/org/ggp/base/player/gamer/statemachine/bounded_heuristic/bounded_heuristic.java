@@ -130,7 +130,6 @@ public final class bounded_heuristic extends StateMachineGamer
     	}
 
     	if(timeout - System.currentTimeMillis() < SEARCH_TIME) {
-    		System.out.println(machine.findLegals(role, state).size() / max_moves);
     		return machine.findLegals(role, state).size() / max_moves;
     	}
 
