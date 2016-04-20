@@ -22,6 +22,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public final class bounded_heuristic extends StateMachineGamer
 {
 	static long SEARCH_TIME = 1500;
+	static int DEPTH = 5;
 	float max_moves;
 
 	@Override
@@ -94,7 +95,7 @@ public final class bounded_heuristic extends StateMachineGamer
     	float score = 0;
 
     	for (int i = 0; i < actions.size(); i++) {
-    		float result = minScore(machine, state, roles, role, actions.get(i), 0, 100, timeout);
+    		float result = minScore(machine, state, roles, role, actions.get(i), 0, 100, timeout, 0);
     		if (result == 100) {
     			return actions.get(i);
     		}
@@ -106,7 +107,7 @@ public final class bounded_heuristic extends StateMachineGamer
     	return action;
     }
 
-    private float minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, float alpha, float beta, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    private float minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, float alpha, float beta, long timeout, int level) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	List<List<Move> > actions = getActions(roles, role, action, machine, state);
     	if(actions.size() > max_moves) {
     		max_moves = actions.size();
@@ -114,7 +115,7 @@ public final class bounded_heuristic extends StateMachineGamer
 
     	for (int i = 0; i < actions.size(); i++) {
     		MachineState newState = machine.findNext(actions.get(i), state);
-    		float result = maxScore(machine, roles, role, newState, alpha, beta, timeout);
+    		float result = maxScore(machine, roles, role, newState, alpha, beta, timeout, level + 1);
     		beta = Math.min(beta, result);
     		if (beta <= alpha) {
     			return alpha;
@@ -123,13 +124,13 @@ public final class bounded_heuristic extends StateMachineGamer
     	return beta;
     }
 
-    private float maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state, float alpha, float beta, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
+    private float maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state, float alpha, float beta, long timeout, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+
     	if (machine.findTerminalp(state)) {
     		return machine.findReward(role, state);
     	}
 
-    	if(timeout - System.currentTimeMillis() < SEARCH_TIME) {
+    	if(timeout - System.currentTimeMillis() < SEARCH_TIME || level == DEPTH) {
     		return machine.findLegals(role, state).size() / max_moves;
     	}
 
@@ -139,7 +140,7 @@ public final class bounded_heuristic extends StateMachineGamer
     	}
 
     	for (int i = 0; i < actions.size(); i++) {
-    		float result = minScore(machine, state, roles, role, actions.get(i), alpha, beta, timeout);
+    		float result = minScore(machine, state, roles, role, actions.get(i), alpha, beta, timeout, level);
     		alpha = Math.max(alpha, result);
     		if (alpha >= beta) {
     			return beta;

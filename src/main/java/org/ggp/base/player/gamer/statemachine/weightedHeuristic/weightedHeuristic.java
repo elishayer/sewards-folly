@@ -29,6 +29,7 @@ public final class weightedHeuristic extends StateMachineGamer
 	List<Double> weights = Arrays.asList(0.333, 0.333, 0.333);
 	List<Double> currWeights;
 	int maxMetaReward = 0;
+	Random r = new Random();
 
 	@Override
 	public String getName() {
@@ -64,7 +65,6 @@ public final class weightedHeuristic extends StateMachineGamer
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
 		while(System.currentTimeMillis() + SEARCH_TIME < timeout) {
-			System.out.println("game ran");
 			simulateGame();
 		}
 		currWeights = weights;
@@ -73,8 +73,6 @@ public final class weightedHeuristic extends StateMachineGamer
     }
 
 	private void simulateGame() throws TransitionDefinitionException, GoalDefinitionException, MoveDefinitionException {
-		Random r = new Random();
-
 		double weight1 = r.nextDouble();
 		double weight2 = (1 - weight1) * r.nextDouble();
 		double weight3 = 1 - weight1 - weight2;
@@ -85,7 +83,6 @@ public final class weightedHeuristic extends StateMachineGamer
     	StateMachine machine = getStateMachine();
     	MachineState state = machine.getInitialState();
 		while(!machine.findTerminalp(state)) {
-			System.out.println("made move");
 			List<Move> actions = new ArrayList<Move>();
 			List<Role> roles = machine.getRoles();
 			for (int i = 0; i < roles.size(); i++) {
@@ -93,12 +90,11 @@ public final class weightedHeuristic extends StateMachineGamer
 					actions.add(stateMachineSelectMove(System.currentTimeMillis() + 20));
 				} else {
 					List<Move> legals = machine.findLegals(roles.get(i), state);
-					actions.add(legals.get(new Random().nextInt(legals.size())));
+					actions.add(legals.get(r.nextInt(legals.size())));
 				}
 			}
 			state = machine.getNextState(state, actions);
 		}
-		System.out.println(machine.findTerminalp(state));
 		if (machine.findReward(role, state) > maxMetaReward) {
 			maxMetaReward = machine.findReward(role, state);
 			weights = currWeights;
