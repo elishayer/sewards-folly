@@ -1,4 +1,4 @@
-package org.ggp.base.player.gamer.statemachine.mcs;
+package org.ggp.base.player.gamer.statemachine.MCTS;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +20,34 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
-public final class MCSGamer extends StateMachineGamer
+public final class MCTS extends StateMachineGamer
 {
+	public class Node {
+		private List<Node> children = null;
+		private float score;
+		private MachineState state;
+		private int visits;
+		private Node parent;
+		private Move move;
+
+		public Node(MachineState state, float score, Node parent, Move move) {
+			this.children = new ArrayList<>();
+			this.score = score;
+			this.state = state;
+			this.visits = 0;
+			this.parent = parent;
+			this.move = move;
+		}
+
+		public void addChild(Node child) {
+			children.add(child);
+		}
+
+		public void visit() {
+			visits += 1;
+		}
+	}
+
 	static long SEARCH_TIME = 1500;
 	static int LEVEL = 4;
 	static Random r = new Random();
@@ -32,9 +58,12 @@ public final class MCSGamer extends StateMachineGamer
 	private double explorationTime;
 	private int numCharges;
 
+
+
+
 	@Override
 	public String getName() {
-		return "SewardsFollyMCS";
+		return "SewardsFollyMCTS";
 	}
 
 	@Override
@@ -65,6 +94,8 @@ public final class MCSGamer extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+		return;
+		/*
 		int chargesSent = 0;
 		double totalChargeTime = 0;
 		StateMachine machine = getStateMachine();
@@ -84,6 +115,7 @@ public final class MCSGamer extends StateMachineGamer
 		System.out.println("expansionfactor: " + expansionFactor + " | nodesExplored per move: " + nodesExplored);
 		explorationTime = nodesExplored * depthLength;
 		System.out.println("exptime: " + explorationTime);
+		*/
     }
 
     @Override
@@ -95,20 +127,100 @@ public final class MCSGamer extends StateMachineGamer
 
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
-		Move best = moves.get(0);
-		if (moves.size() > 1) {
-			// Build the minimax tree
-			MachineState state = getCurrentState();
-			List<Role> roles = getStateMachine().findRoles();
-			Role role = getRole();
-
-			best = bestMove(machine, state, roles, role, timeout);
+		Node curState = new Node(getCurrentState(), 0, null, null);
+		System.out.println("state" );
+		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+			Node selected = select(curState);
+			expand(selected, machine, getRole());
 		}
+
+		Move bestMove = null;
+		float bestScore = 0;
+		for(int i = 0; i < curState.children.size(); i++) {
+			System.out.println("score: " + curState.children.get(i).score);
+			if(curState.children.get(i).score >= bestScore) {
+				bestMove = curState.children.get(i).move;
+				bestScore = curState.children.get(i).score;
+			}
+		}
+
 		long stop = System.currentTimeMillis();
 
-        notifyObservers(new GamerSelectedMoveEvent(moves, best, stop - start));
-        return best;
+        notifyObservers(new GamerSelectedMoveEvent(moves, bestMove, stop - start));
+        return bestMove;
     }
+
+    private Node select(Node node) {
+    	System.out.println(node.visits);
+    	if(node.visits <= 1) return node;
+
+    	for(int i = 0; i < node.children.size(); i++) {
+    		if (node.children.get(i).visits == 0 ) {
+    			return node.children.get(i);
+    		}
+    	}
+    	float score = 0;
+    	Node result = node;
+
+    	for(int i = 0; i < node.children.size(); i++) {
+    		float newscore = selectfn(node.children.get(i));
+    		if(newscore > score) {
+    			score = newscore;
+    			result = node.children.get(i);
+    		}
+    	}
+    	return select(result);
+    }
+
+    float selectfn(Node node) {
+    	return (float) (node.score + Math.sqrt(2 * Math.log(node.parent.visits)/node.visits));
+    }
+
+    private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    	System.out.println("expand");
+    	List<Move> actions =  machine.getLegalMoves(node.state, role);
+    	for(int i = 0; i< actions.size(); i++) {
+    		List<Move> action = new ArrayList<Move>();
+    		action.add(actions.get(i));
+    		MachineState newstate = machine.getNextState(node.state, action);
+    		float totalscore = 0;
+    		for(int j = 0; j < 100; j++) {
+    			float score = (float) depthCharge(machine, machine.getRoles(), role, newstate, false);
+    			totalscore += score;
+    		}
+    		totalscore /= 100;
+
+    		System.out.println("child added");
+    		Node newNode = new Node(newstate, 0, node, actions.get(i));
+    		node.children.add(newNode);
+
+    		backpropogate(newNode, totalscore);
+    	}
+    }
+
+    private void backpropogate(Node node, float score) {
+    	node.visit();
+    	node.score += score;
+    	if(node.parent != null) {
+    		backpropogate(node.parent, score);
+    	}
+    }
+
+    private double monteCarlo(StateMachine machine, List<Role> roles, Role role, MachineState state, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	double total = 0;
+    	for (int i = 0; i < numCharges; i++) {
+    		if (System.currentTimeMillis() > timeout - SEARCH_TIME) {
+    			return total / (i + 1);
+    		}
+    		double depthVal = depthCharge(machine, roles, role, state, false);
+    		total += depthVal;
+    	}
+    	return total / numCharges;
+    }
+
+
+
+
 
     private Move bestMove(StateMachine machine, MachineState state, List<Role> roles, Role role, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	List<Move> actions = machine.findLegals(role, state);
@@ -202,17 +314,6 @@ public final class MCSGamer extends StateMachineGamer
     	}
     }
 
-    private double monteCarlo(StateMachine machine, List<Role> roles, Role role, MachineState state, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	double total = 0;
-    	for (int i = 0; i < numCharges; i++) {
-    		if (System.currentTimeMillis() > timeout - SEARCH_TIME) {
-    			return total / (i + 1);
-    		}
-    		double depthVal = depthCharge(machine, roles, role, state, false);
-    		total += depthVal;
-    	}
-    	return total / numCharges;
-    }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
     	if (machine.findTerminalp(state)) {
