@@ -23,7 +23,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public final class MCSGamer extends StateMachineGamer
 {
 	static long SEARCH_TIME = 1500;
-	static int LEVEL = 2;
+	static int LEVEL = 4;
 	static Random r = new Random();
 
 	private double expansionFactor;
