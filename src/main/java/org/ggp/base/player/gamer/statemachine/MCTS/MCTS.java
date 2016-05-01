@@ -24,27 +24,19 @@ public final class MCTS extends StateMachineGamer
 {
 	public class Node {
 		private List<Node> children = null;
-		private float score;
+		private double score;
 		private MachineState state;
 		private int visits;
 		private Node parent;
 		private Move move;
 
-		public Node(MachineState state, float score, Node parent, Move move) {
+		public Node(MachineState state, double score, Node parent, Move move) {
 			this.children = new ArrayList<>();
 			this.score = score;
 			this.state = state;
 			this.visits = 0;
 			this.parent = parent;
 			this.move = move;
-		}
-
-		public void addChild(Node child) {
-			children.add(child);
-		}
-
-		public void visit() {
-			visits += 1;
 		}
 	}
 
@@ -58,7 +50,7 @@ public final class MCTS extends StateMachineGamer
 	private double explorationTime;
 	private int numCharges;
 
-
+	private int unexplored;
 
 
 	@Override
@@ -128,17 +120,22 @@ public final class MCTS extends StateMachineGamer
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
 		Node curState = new Node(getCurrentState(), 0, null, null);
-		System.out.println("state" );
-		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+
+		unexplored = 1;
+
+		while(timeout - System.currentTimeMillis() >= SEARCH_TIME && unexplored > 0) {
+			System.out.println(unexplored);
 			Node selected = select(curState);
 			expand(selected, machine, getRole());
+			unexplored--;
 		}
 
+		System.out.println(getNodeCount(curState));
+
 		Move bestMove = null;
-		float bestScore = 0;
-		for(int i = 0; i < curState.children.size(); i++) {
-			System.out.println("score: " + curState.children.get(i).score);
-			if(curState.children.get(i).score >= bestScore) {
+		double bestScore = 0;
+		for (int i = 0; i < curState.children.size(); i++) {
+			if (curState.children.get(i).score >= bestScore) {
 				bestMove = curState.children.get(i).move;
 				bestScore = curState.children.get(i).score;
 			}
@@ -150,21 +147,31 @@ public final class MCTS extends StateMachineGamer
         return bestMove;
     }
 
-    private Node select(Node node) {
-    	System.out.println(node.visits);
-    	if(node.visits <= 1) return node;
+    private int getNodeCount(Node node) {
+    	int count = 1;
+    	for (int i = 0; i < node.children.size(); i++) {
+    	   	count += getNodeCount(node.children.get(i));
+    	}
+    	return count;
+    }
 
-    	for(int i = 0; i < node.children.size(); i++) {
+    private Node select(Node node) {
+    	if (node == null || node.visits == 0)	{
+    		return node;
+    	}
+
+    	for (int i = 0; i < node.children.size(); i++) {
     		if (node.children.get(i).visits == 0 ) {
     			return node.children.get(i);
     		}
     	}
-    	float score = 0;
-    	Node result = node;
 
-    	for(int i = 0; i < node.children.size(); i++) {
-    		float newscore = selectfn(node.children.get(i));
-    		if(newscore > score) {
+    	double score = 0;
+    	Node result = null;
+
+    	for (int i = 0; i < node.children.size(); i++) {
+    		double newscore = selectfn(node.children.get(i));
+    		if (newscore > score) {
     			score = newscore;
     			result = node.children.get(i);
     		}
@@ -172,34 +179,43 @@ public final class MCTS extends StateMachineGamer
     	return select(result);
     }
 
-    float selectfn(Node node) {
-    	return (float) (node.score + Math.sqrt(2 * Math.log(node.parent.visits)/node.visits));
+    double selectfn(Node node) {
+    	return (double) (node.score + Math.sqrt(2 * Math.log(node.parent.visits)/node.visits));
     }
 
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-    	System.out.println("expand");
-    	List<Move> actions =  machine.getLegalMoves(node.state, role);
+    	if (node == null) return;
+
+    	if (machine.findTerminalp(node.state)) {
+    		node.visits++;
+    		int score = machine.findReward(role, node.state);
+    		node.score = score;
+    		backpropogate(node.parent, score);
+    		return;
+    	}
+
+    	List<Move> actions = machine.getLegalMoves(node.state, role);
     	for(int i = 0; i< actions.size(); i++) {
     		List<Move> action = new ArrayList<Move>();
     		action.add(actions.get(i));
     		MachineState newstate = machine.getNextState(node.state, action);
-    		float totalscore = 0;
-    		for(int j = 0; j < 100; j++) {
-    			float score = (float) depthCharge(machine, machine.getRoles(), role, newstate, false);
+    		double totalscore = 0;
+    		for(int j = 0; j < 1000; j++) {
+    			double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
     			totalscore += score;
     		}
-    		totalscore /= 100;
+    		totalscore /= 1000;
 
-    		System.out.println("child added");
-    		Node newNode = new Node(newstate, 0, node, actions.get(i));
+    		Node newNode = new Node(newstate, totalscore, node, actions.get(i));
     		node.children.add(newNode);
+    		unexplored++;
 
-    		backpropogate(newNode, totalscore);
+    		backpropogate(newNode.parent, totalscore);
     	}
     }
 
-    private void backpropogate(Node node, float score) {
-    	node.visit();
+    private void backpropogate(Node node, double score) {
+    	node.visits++;
     	node.score += score;
     	if(node.parent != null) {
     		backpropogate(node.parent, score);
@@ -212,15 +228,11 @@ public final class MCTS extends StateMachineGamer
     		if (System.currentTimeMillis() > timeout - SEARCH_TIME) {
     			return total / (i + 1);
     		}
-    		double depthVal = depthCharge(machine, roles, role, state, false);
+    		double depthVal = depthCharge(machine, roles, role, state, false, 0);
     		total += depthVal;
     	}
     	return total / numCharges;
     }
-
-
-
-
 
     private Move bestMove(StateMachine machine, MachineState state, List<Role> roles, Role role, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	List<Move> actions = machine.findLegals(role, state);
@@ -314,8 +326,8 @@ public final class MCTS extends StateMachineGamer
     	}
     }
 
-
-    private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	if (level > 20) return 5 / 0;
     	if (machine.findTerminalp(state)) {
     		return machine.findReward(role, state);
     	}
@@ -329,7 +341,7 @@ public final class MCTS extends StateMachineGamer
     		actions.add(legals.get(r.nextInt(legals.size())));
     	}
     	state = machine.getNextState(state, actions);
-    	return depthCharge(machine, roles, role, state, meta);
+    	return depthCharge(machine, roles, role, state, meta, level + 1);
     }
 
 }
