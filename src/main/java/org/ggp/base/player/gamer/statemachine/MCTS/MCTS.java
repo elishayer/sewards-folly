@@ -128,16 +128,20 @@ public final class MCTS extends StateMachineGamer
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
 		Node curState = new Node(getCurrentState(), 0, null, null);
-		System.out.println("state" );
+		//System.out.println("state" );
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curState);
-			expand(selected, machine, getRole());
+	    	System.out.println("new node selected");
+			if(selected != null) {
+				expand(selected, machine, getRole());
+				System.out.println("new node expanded");
+			}
 		}
 
 		Move bestMove = null;
 		float bestScore = 0;
 		for(int i = 0; i < curState.children.size(); i++) {
-			System.out.println("score: " + curState.children.get(i).score);
+			//System.out.println("score: " + curState.children.get(i).score);
 			if(curState.children.get(i).score >= bestScore) {
 				bestMove = curState.children.get(i).move;
 				bestScore = curState.children.get(i).score;
@@ -151,7 +155,11 @@ public final class MCTS extends StateMachineGamer
     }
 
     private Node select(Node node) {
-    	System.out.println(node.visits);
+    	if(node == null) {
+    		return null;
+    	}
+
+    	//System.out.println(node.visits);
     	if(node.visits <= 1) return node;
 
     	for(int i = 0; i < node.children.size(); i++) {
@@ -160,7 +168,7 @@ public final class MCTS extends StateMachineGamer
     		}
     	}
     	float score = 0;
-    	Node result = node;
+    	Node result = null;
 
     	for(int i = 0; i < node.children.size(); i++) {
     		float newscore = selectfn(node.children.get(i));
@@ -177,25 +185,50 @@ public final class MCTS extends StateMachineGamer
     }
 
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-    	System.out.println("expand");
+    	//System.out.println("expand");
     	List<Move> actions =  machine.getLegalMoves(node.state, role);
-    	for(int i = 0; i< actions.size(); i++) {
+    	for(int i = 0; i < actions.size(); i++) {
     		List<Move> action = new ArrayList<Move>();
     		action.add(actions.get(i));
     		MachineState newstate = machine.getNextState(node.state, action);
     		float totalscore = 0;
     		for(int j = 0; j < 100; j++) {
-    			float score = (float) depthCharge(machine, machine.getRoles(), role, newstate, false);
+    			//System.out.println(node.state);
+    			float score = (float) depthCharge(j, machine, machine.getRoles(), role, newstate, false);
     			totalscore += score;
     		}
     		totalscore /= 100;
 
-    		System.out.println("child added");
+    		//System.out.println("child added");
     		Node newNode = new Node(newstate, 0, node, actions.get(i));
     		node.children.add(newNode);
 
     		backpropogate(newNode, totalscore);
     	}
+    }
+
+    private double depthCharge(int j, StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	if(j == 0) {
+    	//	System.out.println(state);
+    	}
+    	if (machine.findTerminalp(state)) {
+    		return machine.findReward(role, state);
+    	}
+    	List<Move> actions = new ArrayList<Move>();
+    	for (int i = 0; i < roles.size(); i++) {
+    		List<Move> legals = machine.findLegals(roles.get(i), state);
+    		/*
+    		if (roles.get(i).equals(role)) {
+    			expansionFactorTotal += legals.size();
+    			expansionFactorNum++;
+    		}
+    		*/
+    		int r = new Random().nextInt(legals.size());
+    		//System.out.println(r);
+    		actions.add(legals.get(r));
+    	}
+    	state = machine.getNextState(state, actions);
+    	return depthCharge(j, machine, roles, role, state, meta);
     }
 
     private void backpropogate(Node node, float score) {
@@ -206,6 +239,7 @@ public final class MCTS extends StateMachineGamer
     	}
     }
 
+    /*
     private double monteCarlo(StateMachine machine, List<Role> roles, Role role, MachineState state, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
     	double total = 0;
     	for (int i = 0; i < numCharges; i++) {
@@ -217,10 +251,6 @@ public final class MCTS extends StateMachineGamer
     	}
     	return total / numCharges;
     }
-
-
-
-
 
     private Move bestMove(StateMachine machine, MachineState state, List<Role> roles, Role role, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	List<Move> actions = machine.findLegals(role, state);
@@ -313,23 +343,5 @@ public final class MCTS extends StateMachineGamer
     		}
     	}
     }
-
-
-    private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	if (machine.findTerminalp(state)) {
-    		return machine.findReward(role, state);
-    	}
-    	List<Move> actions = new ArrayList<Move>();
-    	for (int i = 0; i < roles.size(); i++) {
-    		List<Move> legals = machine.findLegals(roles.get(i), state);
-    		if (roles.get(i).equals(role)) {
-    			expansionFactorTotal += legals.size();
-    			expansionFactorNum++;
-    		}
-    		actions.add(legals.get(r.nextInt(legals.size())));
-    	}
-    	state = machine.getNextState(state, actions);
-    	return depthCharge(machine, roles, role, state, meta);
-    }
-
+    */
 }
