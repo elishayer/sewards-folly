@@ -54,6 +54,10 @@ public final class MCTS extends StateMachineGamer
 
 	private int unexplored;
 
+	private Node root;
+	private Node curNode;
+
+	boolean first = true;
 
 	@Override
 	public String getName() {
@@ -88,6 +92,18 @@ public final class MCTS extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+
+		StateMachine machine = getStateMachine();
+
+		curNode = new Node(machine.getInitialState(), 0, null, null);
+
+		boolean me = true;
+		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+			Node selected = select(curNode, me);
+			expand(selected, machine, getRole());
+			me = !me;
+		}
+
 		return;
 		/*
 		int chargesSent = 0;
@@ -123,7 +139,21 @@ public final class MCTS extends StateMachineGamer
 
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
-		Node curState = new Node(getCurrentState(), 0, null, null);
+		Node curState = null;
+		if(first) {
+			curState = curNode;
+			first = false;
+		} else {
+			MachineState state = getCurrentState();
+			for(int i = 0; i < curNode.children.size(); i++) {
+				if(curNode.children.get(i).state.equals(state)) {
+					curState = curNode.children.get(i);
+					curNode = curState;
+					break;
+				}
+			}
+
+		}
 
 		//tracks number of unexplored nodes in the treee
 		unexplored = 1;
