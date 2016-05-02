@@ -30,15 +30,15 @@ public final class MCTS extends StateMachineGamer
 		private MachineState state;
 		private int visits;
 		private Node parent;
-		private Move move;
+		private List<Move> moves;
 
-		public Node(MachineState state, double score, Node parent, Move move) {
+		public Node(MachineState state, double score, Node parent, List<Move> moves) {
 			this.children = new ArrayList<>();
 			this.score = score;
 			this.state = state;
 			this.visits = 0;
 			this.parent = parent;
-			this.move = move;
+			this.moves = moves;
 		}
 	}
 
@@ -129,22 +129,35 @@ public final class MCTS extends StateMachineGamer
 		unexplored = 1;
 
 		//selects and expands on a node until time is up or all nodes have been searched
+		boolean me = true;
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME && unexplored > 0) {
-			Node selected = select(curState);
+			Node selected = select(curState, me);
 			expand(selected, machine, getRole());
-			//System.out.println("undexplored " + unexplored);
+			me = !me;
+			//System.out.println("undexplored: " + unexplored);
 			//System.out.println("");
 		}
 
-		System.out.println(getNodeCount(curState, machine));
+		//System.out.println(getNodeCount(curState, machine));
+		Role role = getRole();
+		List<Role> roles = machine.getRoles();
+
+
+		int roleIndex = 0;
+		for(int i = 0; i < roles.size(); i++) {
+			if(role.equals(roles.get(i))) {
+				roleIndex = i;
+				break;
+			}
+		}
 
 		//selects the best move based on the scores of the child nodes
 		Move bestMove = null;
 		double bestScore = 0;
 		for (int i = 0; i < curState.children.size(); i++) {
-			System.out.println("score: " + curState.children.get(i).score);
+			System.out.println("move: " + curState.children.get(i).moves.get(roleIndex)+ " | raw score: " + curState.children.get(i).score + " | visits: " + curState.children.get(i).visits + " | true score " + selectfn(curState.children.get(i)));
 			if (curState.children.get(i).score >= bestScore) {
-				bestMove = curState.children.get(i).move;
+				bestMove = curState.children.get(i).moves.get(roleIndex);
 				bestScore = curState.children.get(i).score;
 			}
 		}
@@ -167,7 +180,8 @@ public final class MCTS extends StateMachineGamer
 
     /* selects a node to expand
      */
-    private Node select(Node node) {
+    private Node select(Node node, boolean me) {
+    	//System.out.println("select");
     	//don't look further
     	if (node == null || node.visits == 0)	{
     		return node;
@@ -175,26 +189,33 @@ public final class MCTS extends StateMachineGamer
 
     	//choose unvisited child
     	for (int i = 0; i < node.children.size(); i++) {
+    		//System.out.println(node.children.get(i).visits);
     		if (node.children.get(i).visits == 0 ) {
     			return node.children.get(i);
     		}
     	}
 
     	//choose from visited childs based on scores and visits
+
+
     	double score = 0;
     	Node result = null;
     	for (int i = 0; i < node.children.size(); i++) {
-    		double newscore = selectfn(node.children.get(i));
-    		if (newscore > score) {
+    		double newscore = (me ? 1 : -1) * selectfn(node.children.get(i));
+    		if (me ? newscore > score : newscore < score) {
     			score = newscore;
     			result = node.children.get(i);
     		}
     	}
-    	return select(result);
+
+    	//if(node.children.size() == 0) return null;
+
+    	//return select(node.children.get(r.nextInt(node.children.size())));
+    	return select(result, me);
     }
 
     double selectfn(Node node) {
-    	return (double) (node.score + Math.sqrt(2 * Math.log(node.parent.visits)/node.visits));
+    	return (double) (node.score + 50*Math.sqrt(Math.log(node.parent.visits)/node.visits));
     }
 
     /*
@@ -222,33 +243,42 @@ public final class MCTS extends StateMachineGamer
     	}
 
     	//run a MCS for each action
-    	List<Move> actions = machine.getLegalMoves(node.state, role);
-    	for(int i = 0; i< actions.size(); i++) {
-    		List<Move> action = new ArrayList<Move>();
-    		action.add(actions.get(i));
-    		MachineState newstate = machine.getNextState(node.state, action);
-    		double totalscore = 0;
-    		for(int j = 0; j < 500; j++) { //place holder #
-    			double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
-    			totalscore += score;
-    		}
-    		totalscore /= 500;
+    	List<List<Move>> actions = getActions(machine.getRoles(), machine, node.state);
+    	List<Move> action = actions.get(r.nextInt(actions.size()));
 
-    		//add nodes to tree
-    		Node newNode = new Node(newstate, totalscore, node, actions.get(i));
-    		node.children.add(newNode);
-    		unexplored++;
+    	//System.out.println(action);
+    	MachineState newstate = machine.getNextState(node.state, action);
+    	double totalscore = 0;
+    	for(int j = 0; j < 100; j++) { //place holder #
+    		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
+    		totalscore += score;
 
-    		backpropogate(newNode.parent, totalscore);
     	}
+    	totalscore /= 100;
+   		//add nodes to tree
+   		Node newNode = new Node(newstate, totalscore, node, action);
+   		node.children.add(newNode);
+   		unexplored++;
+   		backpropogate(newNode.parent, totalscore);
+
+   		for(int i = 0; i < actions.size(); i++) {
+   			if(!actions.get(i).equals(action)) {
+   		    	newstate = machine.getNextState(node.state, actions.get(i));
+
+   				newNode = new Node(newstate, 0, node, actions.get(i));
+   				node.children.add(newNode);
+   		   		unexplored++;
+
+   			}
+   		}
 
     	//System.out.println(" | score: " + node.score);
     }
 
     private void backpropogate(Node node, double score) {
     	node.visits++;
-    	node.score += score;
-    	node.score /= node.visits; //adjust to avoid always looking at the same nodes
+    	node.score += (score - node.score)/node.visits;
+    	//adjust to avoid always looking at the same nodes
     	if(node.parent != null) {
     		backpropogate(node.parent, score);
     	}
@@ -273,6 +303,33 @@ public final class MCTS extends StateMachineGamer
     	//recur
     	state = machine.getNextState(state, actions);
     	return depthCharge(machine, roles, role, state, meta, level + 1);
+    }
+
+    // get a list of all possible permutations of actions
+    // by all players (possible more than 2)
+    private List<List<Move> > getActions(List<Role> roles,
+    		StateMachine machine, MachineState state) throws MoveDefinitionException {
+    	List<List<Move> > actions = new ArrayList<List<Move> >();
+    	List<Move> curr = new ArrayList<Move>();
+    	recursiveActionHelper(roles, machine, state, 0, curr, actions);
+    	return actions;
+    }
+
+    // recursive action possibility builder
+    private void recursiveActionHelper(List<Role> roles,
+    		StateMachine machine, MachineState state, int i,
+    		List<Move> curr, List<List<Move> > actions) throws MoveDefinitionException {
+    	if (i == roles.size()) {
+    		actions.add(curr);
+    		return;
+    	} else {
+    		List<Move> possibleActions = machine.getLegalMoves(state, roles.get(i));
+    		for (int j = 0; j < possibleActions.size(); j++) {
+    			List<Move> dest = new ArrayList<Move>(curr);
+    			dest.add(possibleActions.get(j));
+    			recursiveActionHelper(roles, machine, state, i + 1, dest, actions);
+    		}
+    	}
     }
 
     /*
