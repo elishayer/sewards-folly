@@ -42,6 +42,7 @@ public final class MCTS extends StateMachineGamer
 		}
 	}
 
+	static long DEPTH_TIME = 2000;
 	static long SEARCH_TIME = 1500;
 	static int LEVEL = 4;
 	static Random r = new Random();
@@ -94,14 +95,25 @@ public final class MCTS extends StateMachineGamer
     {
 
 		StateMachine machine = getStateMachine();
+		long start = System.currentTimeMillis();
+
+		int charges = 0;
+		long depth_time = 0;
+		while(System.currentTimeMillis() - start < DEPTH_TIME) {
+			long depth_start = System.currentTimeMillis();
+			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
+					true, 0);
+			depth_time = System.currentTimeMillis() - depth_start;
+			charges++;
+		}
+		explorationTime = depth_time / charges;
+		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
 
 		curNode = new Node(machine.getInitialState(), 0, null, null);
 
-		boolean me = true;
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
-			Node selected = select(curNode, me);
+			Node selected = select(curNode);
 			expand(selected, machine, getRole());
-			me = !me;
 		}
 
 		return;
@@ -133,8 +145,11 @@ public final class MCTS extends StateMachineGamer
     {
 		System.out.println("NEW SELECT");
 
+		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * expansionFactor));
+		System.out.println("charges: " + numCharges);
+
     	long start = System.currentTimeMillis();
-		numCharges = (int) ((timeout - start) / explorationTime);
+		//numCharges = (int) ((timeout - start) / explorationTime);
 		StateMachine machine = getStateMachine();
 
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
@@ -152,18 +167,18 @@ public final class MCTS extends StateMachineGamer
 					break;
 				}
 			}
-
 		}
+
+
+		System.out.println(curState.score + " | " + curState.visits);
 
 		//tracks number of unexplored nodes in the treee
 		unexplored = 1;
 
 		//selects and expands on a node until time is up or all nodes have been searched
-		boolean me = true;
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME && unexplored > 0) {
-			Node selected = select(curState, me);
+			Node selected = select(curState);
 			expand(selected, machine, getRole());
-			me = !me;
 			//System.out.println("undexplored: " + unexplored);
 			//System.out.println("");
 		}
@@ -210,7 +225,7 @@ public final class MCTS extends StateMachineGamer
 
     /* selects a node to expand
      */
-    private Node select(Node node, boolean me) {
+    private Node select(Node node) {
     	//System.out.println("select");
     	//don't look further
     	if (node == null || node.visits == 0)	{
@@ -231,8 +246,8 @@ public final class MCTS extends StateMachineGamer
     	double score = 0;
     	Node result = null;
     	for (int i = 0; i < node.children.size(); i++) {
-    		double newscore = (me ? 1 : -1) * selectfn(node.children.get(i));
-    		if (me ? newscore > score : newscore < score) {
+    		double newscore = selectfn(node.children.get(i));
+    		if (newscore > score) {
     			score = newscore;
     			result = node.children.get(i);
     		}
@@ -241,7 +256,7 @@ public final class MCTS extends StateMachineGamer
     	//if(node.children.size() == 0) return null;
 
     	//return select(node.children.get(r.nextInt(node.children.size())));
-    	return select(result, me);
+    	return select(result);
     }
 
     double selectfn(Node node) {
@@ -279,12 +294,12 @@ public final class MCTS extends StateMachineGamer
     	//System.out.println(action);
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
-    	for(int j = 0; j < 100; j++) { //place holder #
+    	for(int j = 0; j < numCharges; j++) { //place holder #
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
     		totalscore += score;
 
     	}
-    	totalscore /= 100;
+    	totalscore /= numCharges;
    		//add nodes to tree
    		Node newNode = new Node(newstate, totalscore, node, action);
    		node.children.add(newNode);
@@ -323,7 +338,7 @@ public final class MCTS extends StateMachineGamer
     	List<Move> actions = new ArrayList<Move>();
     	for (int i = 0; i < roles.size(); i++) {
     		List<Move> legals = machine.findLegals(roles.get(i), state);
-    		if (roles.get(i).equals(role)) {
+    		if (meta && roles.get(i).equals(role)) {
     			expansionFactorTotal += legals.size();
     			expansionFactorNum++;
     		}
