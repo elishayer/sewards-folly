@@ -42,9 +42,9 @@ public final class MCTS extends StateMachineGamer
 		}
 	}
 
-	static long DEPTH_TIME = 2000;
+	static long DEPTH_TIME = 1500;
 	static long SEARCH_TIME = 1500;
-	static int LEVEL = 4;
+	static int LEVEL = 2;
 	static Random r = new Random();
 
 	private double expansionFactor;
@@ -98,24 +98,38 @@ public final class MCTS extends StateMachineGamer
 		long start = System.currentTimeMillis();
 
 		int charges = 0;
-		long depth_time = 0;
+		long depth_start = System.currentTimeMillis();
 		while(System.currentTimeMillis() - start < DEPTH_TIME) {
-			long depth_start = System.currentTimeMillis();
 			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 					true, 0);
-			depth_time = System.currentTimeMillis() - depth_start;
 			charges++;
 		}
-		explorationTime = depth_time / charges;
+		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
+
+		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
+
+		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
+		System.out.println("charges: " + numCharges);
 
 		curNode = new Node(machine.getInitialState(), 0, null, null);
 
+		//System.out.println("state :" + curNode.state);
+
+		//System.out.println(machine.getInitialState());
+		int explored = 0;
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
-		}
+			//System.out.println("state :" + curNode.state);
 
+			explored++;
+		}
+		//System.out.println(explored);
+		//System.out.println("state :" + curNode.state);
+		//System.out.println(curNode.score);
+
+		first = true;
 		return;
 		/*
 		int chargesSent = 0;
@@ -145,7 +159,7 @@ public final class MCTS extends StateMachineGamer
     {
 		System.out.println("NEW SELECT");
 
-		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * expansionFactor));
+		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
 		System.out.println("charges: " + numCharges);
 
     	long start = System.currentTimeMillis();
@@ -155,23 +169,26 @@ public final class MCTS extends StateMachineGamer
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
 		Node curState = null;
+		System.out.println("is first: " + first);
 		if(first) {
 			curState = curNode;
 			first = false;
+			System.out.println("first");
 		} else {
 			MachineState state = getCurrentState();
 			for(int i = 0; i < curNode.children.size(); i++) {
 				if(curNode.children.get(i).state.equals(state)) {
 					curState = curNode.children.get(i);
 					curNode = curState;
+					System.out.println("chosen");
 					break;
 				}
 			}
 		}
 
-
+		if(curState != null) {
 		System.out.println(curState.score + " | " + curState.visits);
-
+		}
 		//tracks number of unexplored nodes in the treee
 		unexplored = 1;
 
