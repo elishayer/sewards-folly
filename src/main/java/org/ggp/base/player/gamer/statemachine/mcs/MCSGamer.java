@@ -31,6 +31,7 @@ public final class MCSGamer extends StateMachineGamer
 	private int expansionFactorNum = 0;
 	private double explorationTime;
 	private int numCharges;
+	private int chargesSent;
 
 	@Override
 	public String getName() {
@@ -91,6 +92,7 @@ public final class MCSGamer extends StateMachineGamer
     {
 		long start = System.currentTimeMillis();
 		numCharges = (int) ((timeout - start) / explorationTime);
+		chargesSent = 0;
 		StateMachine machine = getStateMachine();
 
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
@@ -106,6 +108,7 @@ public final class MCSGamer extends StateMachineGamer
 		}
 		long stop = System.currentTimeMillis();
 
+		System.out.println("charges sent: " + chargesSent);
         notifyObservers(new GamerSelectedMoveEvent(moves, best, stop - start));
         return best;
     }
@@ -154,6 +157,7 @@ public final class MCSGamer extends StateMachineGamer
     	}
 
     	if (level > LEVEL) {
+    		System.out.println("monteCarlo");
     		return (int) monteCarlo(machine, roles, role, state, timeout);
     	}
 
@@ -208,6 +212,7 @@ public final class MCSGamer extends StateMachineGamer
     		if (System.currentTimeMillis() > timeout - SEARCH_TIME) {
     			return total / (i + 1);
     		}
+        	chargesSent++;
     		double depthVal = depthCharge(machine, roles, role, state, false);
     		total += depthVal;
     	}
