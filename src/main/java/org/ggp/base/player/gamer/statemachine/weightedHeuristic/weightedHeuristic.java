@@ -64,12 +64,14 @@ public final class weightedHeuristic extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+		int gameCount = 0;
 		while(System.currentTimeMillis() + SEARCH_TIME < timeout) {
 			simulateGame();
+			gameCount++;
 		}
 		currWeights = weights;
+		System.out.println("Game count: " + gameCount);
 		System.out.println("final currweights" + currWeights.toString());
-
     }
 
 	private void simulateGame() throws TransitionDefinitionException, GoalDefinitionException, MoveDefinitionException {
