@@ -53,6 +53,8 @@ public final class MCTS extends StateMachineGamer
 	private double explorationTime;
 	private int numCharges;
 
+	private int chargesSent;
+
 	private int unexplored;
 
 	private Node root;
@@ -106,9 +108,7 @@ public final class MCTS extends StateMachineGamer
 		}
 		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
-
 		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
-
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
 		System.out.println("charges: " + numCharges);
 
@@ -118,7 +118,7 @@ public final class MCTS extends StateMachineGamer
 
 		//System.out.println(machine.getInitialState());
 		int explored = 0;
-		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+		while(timeout -d System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
 			//System.out.println("state :" + curNode.state);
@@ -157,7 +157,9 @@ public final class MCTS extends StateMachineGamer
     @Override
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-		System.out.println("NEW SELECT");
+		chargesSent = 0;
+
+    	System.out.println("NEW SELECT");
 
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
 		System.out.println("charges: " + numCharges);
@@ -192,6 +194,7 @@ public final class MCTS extends StateMachineGamer
 		//tracks number of unexplored nodes in the treee
 		unexplored = 1;
 
+
 		//selects and expands on a node until time is up or all nodes have been searched
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME && unexplored > 0) {
 			Node selected = select(curState);
@@ -199,6 +202,8 @@ public final class MCTS extends StateMachineGamer
 			//System.out.println("undexplored: " + unexplored);
 			//System.out.println("");
 		}
+
+		System.out.println("charges sent: " + chargesSent);
 
 		//System.out.println(getNodeCount(curState, machine));
 		Role role = getRole();
@@ -312,6 +317,7 @@ public final class MCTS extends StateMachineGamer
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
     	for(int j = 0; j < numCharges; j++) { //place holder #
+    		chargesSent++;
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
     		totalscore += score;
 
@@ -347,24 +353,20 @@ public final class MCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	if (machine.findTerminalp(state)) { //stop on terminal state
-    		return machine.findReward(role, state);
+    	while(!machine.findTerminalp(state)) {
+    		List<Move> actions = new ArrayList<Move>();
+        	for (int i = 0; i < roles.size(); i++) {
+        		List<Move> legals = machine.findLegals(roles.get(i), state);
+        		if (meta && roles.get(i).equals(role)) {
+        			expansionFactorTotal += legals.size();
+        			expansionFactorNum++;
+        		}
+        		actions.add(legals.get(r.nextInt(legals.size())));
+        	}
+        	state = machine.getNextState(state, actions);
     	}
 
-    	//choose a random action for each player
-    	List<Move> actions = new ArrayList<Move>();
-    	for (int i = 0; i < roles.size(); i++) {
-    		List<Move> legals = machine.findLegals(roles.get(i), state);
-    		if (meta && roles.get(i).equals(role)) {
-    			expansionFactorTotal += legals.size();
-    			expansionFactorNum++;
-    		}
-    		actions.add(legals.get(r.nextInt(legals.size())));
-    	}
-
-    	//recur
-    	state = machine.getNextState(state, actions);
-    	return depthCharge(machine, roles, role, state, meta, level + 1);
+    	return machine.findReward(role, state);
     }
 
     // get a list of all possible permutations of actions
