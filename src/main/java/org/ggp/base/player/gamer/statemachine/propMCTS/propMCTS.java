@@ -94,6 +94,7 @@ public final class propMCTS extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+		System.out.println("Meta gaming starts");
 		StateMachine machine = getStateMachine();
 
 		long start = System.currentTimeMillis();
@@ -101,6 +102,7 @@ public final class propMCTS extends StateMachineGamer
 		int charges = 0;
 		long depth_start = System.currentTimeMillis();
 		while(System.currentTimeMillis() - start < DEPTH_TIME) {
+			System.out.println("Starting a new depth charge");
 			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 					true, 0);
 			charges++;
@@ -304,16 +306,21 @@ public final class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	System.out.println("depth charge starts here " + state);
     	while(!machine.findTerminalp(state)) {
+    		// System.out.println("one level deeper!");
     		List<Move> actions = new ArrayList<Move>();
         	for (int i = 0; i < roles.size(); i++) {
         		List<Move> legals = machine.findLegals(roles.get(i), state);
+        		// System.out.println("legals: " + legals);
         		if (meta && roles.get(i).equals(role)) {
         			expansionFactorTotal += legals.size();
         			expansionFactorNum++;
         		}
         		actions.add(legals.get(r.nextInt(legals.size())));
         	}
+        	// System.out.println(actions);
+        	// System.out.println("current state: " + state + ", next state: " + machine.getNextState(state, actions));
         	state = machine.getNextState(state, actions);
     	}
 
