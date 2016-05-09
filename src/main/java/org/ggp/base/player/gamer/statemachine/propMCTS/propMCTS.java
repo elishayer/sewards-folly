@@ -103,9 +103,11 @@ public final class propMCTS extends StateMachineGamer
 		long depth_start = System.currentTimeMillis();
 		while(System.currentTimeMillis() - start < DEPTH_TIME) {
 			System.out.println("Starting a new depth charge");
+			System.out.println(machine.getInitialState());
 			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 					true, 0);
 			charges++;
+			//if(charges == 2) {int i = 1/0;}
 		}
 		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
@@ -306,7 +308,7 @@ public final class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	System.out.println("depth charge starts here " + state);
+    	//System.out.println("depth charge starts here " + state);
     	while(!machine.findTerminalp(state)) {
     		// System.out.println("one level deeper!");
     		List<Move> actions = new ArrayList<Move>();
@@ -322,6 +324,8 @@ public final class propMCTS extends StateMachineGamer
         	// System.out.println(actions);
         	// System.out.println("current state: " + state + ", next state: " + machine.getNextState(state, actions));
         	state = machine.getNextState(state, actions);
+        	//System.out.println("cur state: " + state);
+        	//int x = 1/ 0;
     	}
 
     	return machine.findReward(role, state);

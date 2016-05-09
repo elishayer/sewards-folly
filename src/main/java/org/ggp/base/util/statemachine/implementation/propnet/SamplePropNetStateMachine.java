@@ -98,7 +98,19 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
+    	System.out.println("before; " + getStateFromBase());
+
+    	clearPropnet();
+
+    	System.out.println("after: " +getStateFromBase());
+
     	propNet.getInitProposition().setValue(true);
+    	//System.out.println("init " + propNet.getInitProposition());
+    	//clearPropnet();
+    	//System.out.println(getStateFromBase());
+    	//propNet.getInitProposition().setValue(true);
+    	//System.out.println(getStateFromBase());
+    	//int oi = 1/0;
     	return getStateFromBase();
     }
 
@@ -155,18 +167,37 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-    	System.out.println("Get next state called");
+    	//System.out.println("Get next state called");
     	// use the previous state and new moves
+    	//System.out.println("moves" + moves);
     	markActions(moves);
         markBases(state);
 
     	HashMap<GdlSentence, Proposition> bases = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
     	Set<GdlSentence> sentences = bases.keySet();
+    	//HashMap<GdlSentence, Boolean> newbases = new HashMap<GdlSentence, Boolean>();
+
     	for (GdlSentence sentence : sentences) {
-    		System.out.println("propmarkp from getNextState");
-    		propmarkp(true, bases.get(sentence).getSingleInput().getSingleInput());
+    		//System.out.println("propmarkp from getNextState");
+    		Component c = bases.get(sentence).getSingleInput().getSingleInput();
+    		((Proposition) c).setValue(propmarkp(true, c));
     	}
+
         return getStateFromBase();
+
+
+    	/*
+    	for(GdlSentence s: sentences) {
+    		System.out.println("old: "+ bases.get(s).getValue() + " | new: " + newbases.get(s));
+    	}
+
+    	Set<GdlSentence> newsentences = newbases.keySet();
+    	for(GdlSentence sentence: newsentences) {
+    		bases.get(sentence).setValue(newbases.get(sentence));
+    	}
+
+    	return getStateFromBase();
+    	*/
     }
 
     /**
@@ -224,7 +255,6 @@ public class SamplePropNetStateMachine extends StateMachine {
     private void markBases(MachineState state) {
     	Set<GdlSentence> sentences = state.getContents();
     	HashMap<GdlSentence, Proposition> basesMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
-
     	Set<GdlSentence> bases = basesMap.keySet();
 
     	for (GdlSentence base : bases) {
@@ -247,15 +277,16 @@ public class SamplePropNetStateMachine extends StateMachine {
     	HashMap<GdlSentence, Proposition> bases = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
     	Set<GdlSentence> sentences = bases.keySet();
     	for (GdlSentence sentence : sentences) {
-    		bases.get(sentence).setValue(false);
+    		Component c = bases.get(sentence).getSingleInput().getSingleInput();
+    		((Proposition) c).setValue(false);
     	}
     }
 
     private boolean propmarkp(boolean isProp, Component c) {
-    	System.out.println("propmarkp on " + c);
+    	//System.out.println("propmarkp on " + c);
 
     	if (propNet.getInitProposition().equals(c)) {
-    		System.out.println("special case of init proposition in propmarkp");
+    		//System.out.println("special case of init proposition in propmarkp");
     		return c.getValue();
     	}
     	if (isProp) {
@@ -263,26 +294,26 @@ public class SamplePropNetStateMachine extends StateMachine {
     		HashMap<GdlSentence, Proposition> baseMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
     		Set<GdlSentence> baseSentences = baseMap.keySet();
     		for (GdlSentence baseSentence: baseSentences) {
-    			System.out.println(c + " == " + baseMap.get(baseSentence) + " ? " + baseMap.get(baseSentence).equals(c));
+    			//System.out.println(c + " == " + baseMap.get(baseSentence) + " ? " + baseMap.get(baseSentence).equals(c));
     			if (baseMap.get(baseSentence).equals(c)) {
     				return c.getValue();
     			}
     		}
-    		System.out.println("Is NOT a base proposition");
+    		//System.out.println("Is NOT a base proposition");
 
     		// input proposition
     		HashMap<GdlSentence, Proposition> inputMap = (HashMap<GdlSentence, Proposition>) propNet.getInputPropositions();
     		Set<GdlSentence> inputSentences = inputMap.keySet();
     		for (GdlSentence inputSentence: inputSentences) {
-    			System.out.println(c + " == " + inputMap.get(inputSentence) + " ? " + inputMap.get(inputSentence).equals(c));
+    			//System.out.println(c + " == " + inputMap.get(inputSentence) + " ? " + inputMap.get(inputSentence).equals(c));
     			if (inputMap.get(inputSentence).equals(c)) {
     				return c.getValue();
     			}
     		}
-    		System.out.println("Is NOT an input proposition");
+    		//System.out.println("Is NOT an input proposition");
 
     		// view proposition
-    		System.out.println("propmarkp recursively from propmarkp");
+    		//System.out.println("propmarkp recursively from propmarkp");
         	return propmarkp(false, c.getSingleInput());
     	} else {
     		return c.getValue();
