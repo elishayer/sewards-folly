@@ -180,7 +180,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     	for (GdlSentence sentence : sentences) {
     		//System.out.println("propmarkp from getNextState");
     		Component c = bases.get(sentence).getSingleInput().getSingleInput();
-    		((Proposition) c).setValue(propmarkp(true, c));
+    		if(propNet.getPropositions().contains(c)) {
+        		((Proposition) c).setValue(propmarkp(true, c));
+    		}
     	}
 
         return getStateFromBase();
@@ -278,7 +280,10 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Set<GdlSentence> sentences = bases.keySet();
     	for (GdlSentence sentence : sentences) {
     		Component c = bases.get(sentence).getSingleInput().getSingleInput();
-    		((Proposition) c).setValue(false);
+    		//System.out.println(c);
+    		if(propNet.getPropositions().contains(c)) {
+    			((Proposition) c).setValue(false);
+    		}
     	}
     }
 
