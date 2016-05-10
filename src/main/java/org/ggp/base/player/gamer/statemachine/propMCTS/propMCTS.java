@@ -159,8 +159,8 @@ public final class propMCTS extends StateMachineGamer
 			}
 		}
 
-		if(curState != null) {
-		System.out.println(curState.score + " | " + curState.visits);
+		if (curState != null) {
+			System.out.println(curState.score + " | " + curState.visits);
 		}
 		//tracks number of unexplored nodes in the treee
 		unexplored = 1;
@@ -235,9 +235,6 @@ public final class propMCTS extends StateMachineGamer
     		}
     	}
 
-    	//if(node.children.size() == 0) return null;
-
-    	//return select(node.children.get(r.nextInt(node.children.size())));
     	return select(result);
     }
 
@@ -307,24 +304,17 @@ public final class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	//System.out.println("depth charge starts here " + state);
     	while(!machine.findTerminalp(state)) {
-    		// System.out.println("one level deeper!");
     		List<Move> actions = new ArrayList<Move>();
         	for (int i = 0; i < roles.size(); i++) {
         		List<Move> legals = machine.findLegals(roles.get(i), state);
-        		// System.out.println("legals: " + legals);
         		if (meta && roles.get(i).equals(role)) {
         			expansionFactorTotal += legals.size();
         			expansionFactorNum++;
         		}
         		actions.add(legals.get(r.nextInt(legals.size())));
         	}
-        	// System.out.println(actions);
-        	// System.out.println("current state: " + state + ", next state: " + machine.getNextState(state, actions));
         	state = machine.getNextState(state, actions);
-        	//System.out.println("cur state: " + state);
-        	//int x = 1/ 0;
     	}
 
     	return machine.findReward(role, state);

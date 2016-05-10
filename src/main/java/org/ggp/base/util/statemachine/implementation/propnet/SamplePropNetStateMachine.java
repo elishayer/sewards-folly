@@ -42,7 +42,6 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) {
-    	System.out.println("plz work");
         try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
@@ -59,7 +58,6 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public boolean isTerminal(MachineState state) {
     	setPropnet(state, null);
-    	if (propNet.getTerminalProposition().getValue())	System.out.println("terminal: " + state);
     	return propNet.getTerminalProposition().getValue();
     }
 
@@ -186,7 +184,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         // All of the propositions in the PropNet.
         List<Proposition> propositions = new ArrayList<Proposition>(propNet.getPropositions());
 
-        // Compute the topological ordering.
+        // Compute the topological ordering on all components
         while (true) {
         	if (components.isEmpty()) break;
         	for (Component c : components) {
@@ -199,6 +197,8 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
 
         for (int i = 0; i < fullOrder.size(); i++) {
+        	// include propositions, except base, input, and init propositions
+        	// which is to say, only view propositions
         	if (propNet.getPropositions().contains(fullOrder.get(i)) &&
         			!propNet.getBasePropositions().containsValue(fullOrder.get(i)) &&
         			!propNet.getInputPropositions().containsValue(fullOrder.get(i)) &&
@@ -206,8 +206,6 @@ public class SamplePropNetStateMachine extends StateMachine {
         		order.add((Proposition) fullOrder.get(i));
         	}
         }
-        System.out.println(fullOrder);
-        System.out.println(order);
         return order;
     }
 
@@ -217,8 +215,14 @@ public class SamplePropNetStateMachine extends StateMachine {
         return roles;
     }
 
-
-    /* Helper function to determine if a component is ready to be added */
+    /**
+     * Predicate function for whether the component c should be added
+     * to fullOrder, an ordered list of components from the bases and inputs
+     * to the end of the ordered list of components. The rules for adding are:
+     * 1) any base proposition can be added
+     * 2) any input proposition can be added
+     * 3) other components can be added if all of their parents were previously added
+     */
     private boolean canAdd(List<Component> fullOrder, Component c) {
     	if (propNet.getBasePropositions().containsValue(c)) return true;
     	if (propNet.getInputPropositions().containsValue(c)) return true;
@@ -232,9 +236,16 @@ public class SamplePropNetStateMachine extends StateMachine {
 
 
     /* Helper methods */
-    // mark the bases of the propnet based on the contents of the passed in state
+
+    /**
+     * Mark the base propositions given the current state of the game.
+     * Gets all the GDL sentences corresponding to the passed in state,
+     * and then marks the base propositions' value according to whether they
+     * are present in the state's GDL sentences
+     */
     private void markBases(MachineState state) {
     	Set<GdlSentence> sentences = state.getContents();
+
     	HashMap<GdlSentence, Proposition> basesMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
     	Set<GdlSentence> bases = basesMap.keySet();
 
@@ -242,6 +253,13 @@ public class SamplePropNetStateMachine extends StateMachine {
     		basesMap.get(base).setValue(sentences.contains(base));
     	}
     }
+
+    /**
+     * Mark the input propositions given the list of moves of all players.
+     * Gets all the GDL sentences corresponding to the passed in moves,
+     * and then marks the input propositions' value according to whether they
+     * are present in the doeses.
+     */
 
     private void markActions(List<Move> moves) {
     	List<GdlSentence> doeses = toDoes(moves);
@@ -254,12 +272,20 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
     }
 
+    /**
+     * Mark all propositions in the propnet as false
+     */
     private void clearPropnet() {
     	for (Proposition p : propNet.getPropositions()) {
     		p.setValue(false);
     	}
     }
 
+    /**
+     * Set the propnet by clearing all propositions, marking the basis
+     * if state is non-null, marking the actions if moves is non-null,
+     * and setting the value of each of the view propositions in order
+     */
     private void setPropnet(MachineState state, List<Move> moves) {
     	clearPropnet();
     	if (state != null) markBases(state);
@@ -268,46 +294,6 @@ public class SamplePropNetStateMachine extends StateMachine {
     		p.setValue(p.getSingleInput().getValue());
     	}
     }
-
-    /*
-    private boolean propmarkp(boolean isProp, Component c) {
-    	//System.out.println("propmarkp on " + c);
-
-    	if (propNet.getInitProposition().equals(c)) {
-    		//System.out.println("special case of init proposition in propmarkp");
-    		return c.getValue();
-    	}
-    	if (isProp) {
-    		// base proposition
-    		HashMap<GdlSentence, Proposition> baseMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
-    		Set<GdlSentence> baseSentences = baseMap.keySet();
-    		for (GdlSentence baseSentence: baseSentences) {
-    			//System.out.println(c + " == " + baseMap.get(baseSentence) + " ? " + baseMap.get(baseSentence).equals(c));
-    			if (baseMap.get(baseSentence).equals(c)) {
-    				return c.getValue();
-    			}
-    		}
-    		//System.out.println("Is NOT a base proposition");
-
-    		// input proposition
-    		HashMap<GdlSentence, Proposition> inputMap = (HashMap<GdlSentence, Proposition>) propNet.getInputPropositions();
-    		Set<GdlSentence> inputSentences = inputMap.keySet();
-    		for (GdlSentence inputSentence: inputSentences) {
-    			//System.out.println(c + " == " + inputMap.get(inputSentence) + " ? " + inputMap.get(inputSentence).equals(c));
-    			if (inputMap.get(inputSentence).equals(c)) {
-    				return c.getValue();
-    			}
-    		}
-    		//System.out.println("Is NOT an input proposition");
-
-    		// view proposition
-    		//System.out.println("propmarkp recursively from propmarkp");
-        	return propmarkp(false, c.getSingleInput());
-    	} else {
-    		return c.getValue();
-    	}
-    }
-    */
 
     /**
      * The Input propositions are indexed by (does ?player ?action).
