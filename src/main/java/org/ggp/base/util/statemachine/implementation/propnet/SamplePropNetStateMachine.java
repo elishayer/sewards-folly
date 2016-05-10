@@ -187,11 +187,11 @@ public class SamplePropNetStateMachine extends StateMachine {
         // Compute the topological ordering on all components
         while (true) {
         	if (components.isEmpty()) break;
-        	for (Component c : components) {
-        		if (canAdd(fullOrder, c)) {
-        			fullOrder.add(c);
-        			components.remove(c);
-        			break;
+        	for (int i = 0; i < components.size(); i++) {
+        		if (canAdd(fullOrder, components.get(i))) {
+        			fullOrder.add(components.get(i));
+        			components.remove(components.get(i));
+        			i--;
         		}
         	}
         }

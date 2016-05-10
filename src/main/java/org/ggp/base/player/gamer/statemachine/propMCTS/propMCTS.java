@@ -162,16 +162,11 @@ public final class propMCTS extends StateMachineGamer
 		if (curState != null) {
 			System.out.println(curState.score + " | " + curState.visits);
 		}
-		//tracks number of unexplored nodes in the treee
-		unexplored = 1;
-
 
 		//selects and expands on a node until time is up or all nodes have been searched
-		while(timeout - System.currentTimeMillis() >= SEARCH_TIME && unexplored > 0) {
+		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curState);
 			expand(selected, machine, getRole());
-			//System.out.println("undexplored: " + unexplored);
-			//System.out.println("");
 		}
 
 		System.out.println("charges sent: " + chargesSent);
@@ -251,8 +246,6 @@ public final class propMCTS extends StateMachineGamer
     		return;
     	}
 
-		unexplored--;
-
 		//if terminal then a MCS is not needed
     	if (machine.findTerminalp(node.state)) {
     		node.visits++;
@@ -278,7 +271,6 @@ public final class propMCTS extends StateMachineGamer
    		//add nodes to tree
    		Node newNode = new Node(newstate, totalscore, node, action);
    		node.children.add(newNode);
-   		unexplored++;
    		backpropogate(newNode.parent, totalscore);
 
    		for(int i = 0; i < actions.size(); i++) {
@@ -287,8 +279,6 @@ public final class propMCTS extends StateMachineGamer
 
    				newNode = new Node(newstate, 0, node, actions.get(i));
    				node.children.add(newNode);
-   		   		unexplored++;
-
    			}
    		}
 
