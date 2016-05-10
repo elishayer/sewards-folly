@@ -118,7 +118,7 @@ public final class MCTS extends StateMachineGamer
 
 		//System.out.println(machine.getInitialState());
 		int explored = 0;
-		while(timeout -d System.currentTimeMillis() >= SEARCH_TIME) {
+		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
 			//System.out.println("state :" + curNode.state);

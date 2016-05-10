@@ -107,7 +107,7 @@ public final class propMCTS extends StateMachineGamer
 			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 					true, 0);
 			charges++;
-			//if(charges == 2) {int i = 1/0;}
+			// if(charges == 2) {int i = 1/0;}
 		}
 		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
@@ -209,7 +209,6 @@ public final class propMCTS extends StateMachineGamer
     /* selects a node to expand
      */
     private Node select(Node node) {
-    	//System.out.println("select");
     	//don't look further
     	if (node == null || node.visits == 0)	{
     		return node;
