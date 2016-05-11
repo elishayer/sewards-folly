@@ -42,13 +42,18 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) {
-        try {
+        long start = System.currentTimeMillis();
+
+    	try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
             ordering = getOrdering();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    	long end = System.currentTimeMillis();
+    	System.out.println("propnet size: " + propNet.getPropositions().size());
+    	System.out.println("time to build propnet: " + (end - start));
     }
 
     /**

@@ -43,7 +43,7 @@ public final class propMCTS extends StateMachineGamer
 	}
 
 	static long DEPTH_TIME = 1500;
-	static long SEARCH_TIME = 1500;
+	static long SEARCH_TIME = 2000;
 	static int LEVEL = 2;
 	static Random r = new Random();
 
@@ -94,7 +94,7 @@ public final class propMCTS extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-		System.out.println("Meta gaming starts");
+		//System.out.println("Meta gaming starts");
 		StateMachine machine = getStateMachine();
 
 		long start = System.currentTimeMillis();
@@ -102,8 +102,8 @@ public final class propMCTS extends StateMachineGamer
 		int charges = 0;
 		long depth_start = System.currentTimeMillis();
 		while(System.currentTimeMillis() - start < DEPTH_TIME) {
-			System.out.println("Starting a new depth charge");
-			System.out.println(machine.getInitialState());
+			//System.out.println("Starting a new depth charge");
+			//System.out.println(machine.getInitialState());
 			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 					true, 0);
 			charges++;
@@ -113,14 +113,27 @@ public final class propMCTS extends StateMachineGamer
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
 		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
-		System.out.println("charges: " + numCharges);
+		if(numCharges == 0) {
+			numCharges = 1;
+
+		}
+		System.out.println("num charges: " + numCharges);
+		System.out.println("");
 
 		curNode = new Node(machine.getInitialState(), 0, null, null);
 
+		int nodesExplored = 0;
+		chargesSent = 0;
+		depth_start = System.currentTimeMillis();
 		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
+			nodesExplored++;
+			//System.out.println("charing: " + chargesSent);
 		}
+		System.out.println("nodes explored: " + nodesExplored);
+		System.out.println(chargesSent);
+		System.out.println("charges/second: " + (chargesSent / ((System.currentTimeMillis() - depth_start) / 1000.0 )));
 
 		first = true;
 		return;
@@ -134,7 +147,10 @@ public final class propMCTS extends StateMachineGamer
     	System.out.println("NEW SELECT");
 
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
-		System.out.println("charges: " + numCharges);
+		if(numCharges == 0) {
+			numCharges = 1;
+		}
+		System.out.println("num charges: " + numCharges);
 
     	long start = System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
@@ -142,25 +158,21 @@ public final class propMCTS extends StateMachineGamer
 		List<Move> moves = machine.findLegals(getRole(), getCurrentState());
 
 		Node curState = null;
-		System.out.println("is first: " + first);
+		//System.out.println("is first: " + first);
 		if(first) {
 			curState = curNode;
 			first = false;
-			System.out.println("first");
+			//System.out.println("first");
 		} else {
 			MachineState state = getCurrentState();
 			for(int i = 0; i < curNode.children.size(); i++) {
 				if(curNode.children.get(i).state.equals(state)) {
 					curState = curNode.children.get(i);
 					curNode = curState;
-					System.out.println("chosen");
+					//System.out.println("chosen");
 					break;
 				}
 			}
-		}
-
-		if (curState != null) {
-			System.out.println(curState.score + " | " + curState.visits);
 		}
 
 		//selects and expands on a node until time is up or all nodes have been searched
@@ -243,11 +255,13 @@ public final class propMCTS extends StateMachineGamer
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	//avoid expanding a null node
     	if (node == null) {
+    		//System.out.println("null");
     		return;
     	}
 
 		//if terminal then a MCS is not needed
     	if (machine.findTerminalp(node.state)) {
+    		//System.out.println("term");
     		node.visits++;
     		int score = machine.findReward(role, node.state);
     		node.score = score;
@@ -262,11 +276,13 @@ public final class propMCTS extends StateMachineGamer
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
     	for(int j = 0; j < numCharges; j++) { //place holder #
-    		chargesSent++;
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, 0);
     		totalscore += score;
+    		chargesSent++;
 
     	}
+		//System.out.println(chargesSent);
+
     	totalscore /= numCharges;
    		//add nodes to tree
    		Node newNode = new Node(newstate, totalscore, node, action);
