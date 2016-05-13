@@ -35,6 +35,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     /** The player roles */
     private List<Role> roles;
 
+    private long setTime = 0;
+
+    @Override
+    public long setTime() {
+    	return setTime;
+    }
+
+
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -292,12 +300,16 @@ public class SamplePropNetStateMachine extends StateMachine {
      * and setting the value of each of the view propositions in order
      */
     private void setPropnet(MachineState state, List<Move> moves) {
+    	long start = System.currentTimeMillis();
+
     	clearPropnet();
     	if (state != null) markBases(state);
     	if (moves != null) markActions(moves);
     	for (Proposition p : ordering) {
     		p.setValue(p.getSingleInput().getValue());
     	}
+
+    	setTime += System.currentTimeMillis() - start;
     }
 
     /**

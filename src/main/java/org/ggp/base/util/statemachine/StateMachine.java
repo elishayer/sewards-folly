@@ -28,6 +28,11 @@ public abstract class StateMachine
     // These methods (through findterminalp) layer over other methods
 	// in order to align with notation in the notes for Stanford's CS227B course
 
+
+	public long getSetTime() {
+		return setTime();
+	}
+
 	/**
 	 * Returns the list of roles for the game.
 	 */
@@ -112,6 +117,8 @@ public abstract class StateMachine
     // ============================================
     //  The following methods are required for a valid
     // state machine implementation.
+    public abstract long setTime();
+
     /**
      * Initializes the StateMachine to describe the given game rules.
      * <p>

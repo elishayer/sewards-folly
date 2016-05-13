@@ -112,10 +112,10 @@ public final class propMCTS extends StateMachineGamer
 		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
 		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
+		System.out.println("set time: " + machine.getSetTime());
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
 		if(numCharges == 0) {
 			numCharges = 1;
-
 		}
 		System.out.println("num charges: " + numCharges);
 		System.out.println("");

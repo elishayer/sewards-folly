@@ -38,10 +38,17 @@ public final class CachedStateMachine extends StateMachine
         }
     }
 
+
+
     public CachedStateMachine(StateMachine backingStateMachine)
     {
         this.backingStateMachine = backingStateMachine;
         ttlCache = new TtlCache<MachineState, Entry>(1);
+    }
+
+	@Override
+	public long setTime() {
+    	return backingStateMachine.setTime();
     }
 
     private Entry getEntry(MachineState state)
