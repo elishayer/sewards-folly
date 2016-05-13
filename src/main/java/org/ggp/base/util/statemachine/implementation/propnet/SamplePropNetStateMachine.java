@@ -35,6 +35,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     /** The player roles */
     private List<Role> roles;
 
+    /** The relevant legal moves, post factoring */
+    private Set<Proposition> relevantLegals = new HashSet<Proposition>();
+
     private long setTime = 0;
 
     @Override
@@ -55,6 +58,10 @@ public class SamplePropNetStateMachine extends StateMachine {
     	try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
+
+            // factor the propnet, removing any unneeded propsitions
+            factorAnalysis();
+
             ordering = getOrdering();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -151,7 +158,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
-    		if (p.getValue()) {
+    		if (relevantLegals.contains(p) && p.getValue()) {
     			actions.add(getMoveFromProposition(p));
     		}
     	}
@@ -378,4 +385,41 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
         return new MachineState(contents);
     }
+
+    private void factorAnalysis() {
+    	Proposition terminal = propNet.getTerminalProposition();
+    	Set<Component> relevant = new HashSet<Component>();
+    	backpropogateFactoring(terminal, relevant);
+    	System.out.println("total num propositions: " + propNet.getComponents().size());
+    	System.out.println("factored");
+    	System.out.println("relevant size: " + relevant.size());
+
+    	int count = 0;
+    	Map<Role, Set<Proposition> > temp = propNet.getLegalPropositions();
+    	for (Role role : temp.keySet()) {
+    		count += temp.get(role).size();
+    	}
+
+    	System.out.println("Legals total: " + count);
+    	System.out.println("Relevant legals: " + relevantLegals.size());
+    }
+
+    private void backpropogateFactoring(Component component, Set<Component> relevant) {
+    	if (relevant.contains(component)) return;
+    	if (propNet.getInputPropositions().containsValue(component)) {
+    		Proposition legal = propNet.getLegalInputMap().get(component);
+    		relevantLegals.add(legal);
+    	}
+    	relevant.add(component);
+    	for (Component input : component.getInputs()) {
+    		backpropogateFactoring(input, relevant);
+    	}
+    }
+
+
+
+
+
+
+
 }
