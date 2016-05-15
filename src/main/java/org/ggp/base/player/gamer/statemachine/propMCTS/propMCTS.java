@@ -20,7 +20,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.propnet.SamplePropNetStateMachine;
 
-public final class propMCTS extends StateMachineGamer
+public class propMCTS extends StateMachineGamer
 {
 	/* Node Structure for state tree
 	 */
@@ -54,8 +54,6 @@ public final class propMCTS extends StateMachineGamer
 	private int numCharges;
 
 	private int chargesSent;
-
-	private int unexplored;
 
 	private Node curNode;
 

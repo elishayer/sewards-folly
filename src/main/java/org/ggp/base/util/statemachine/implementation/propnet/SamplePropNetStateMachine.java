@@ -14,6 +14,7 @@ import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
+import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
@@ -69,6 +70,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	long end = System.currentTimeMillis();
     	System.out.println("propnet size: " + propNet.getPropositions().size());
     	System.out.println("time to build propnet: " + (end - start));
+    	propNet.renderToFile("propnet-viz.dot");
     }
 
     /**
@@ -389,7 +391,16 @@ public class SamplePropNetStateMachine extends StateMachine {
     private void factorAnalysis() {
     	Proposition terminal = propNet.getTerminalProposition();
     	Set<Component> relevant = new HashSet<Component>();
+
+    	List<Component> subgameTerminals = new ArrayList<Component>();
+    	splitSubgames(terminal, subgameTerminals, true);
+    	System.out.println(subgameTerminals.size());
+    	for (Component subgameTerminal : subgameTerminals) {
+    		int length = getSubgameLength((Proposition) subgameTerminal);
+    	}
+
     	backpropogateFactoring(terminal, relevant);
+
     	System.out.println("total num propositions: " + propNet.getComponents().size());
     	System.out.println("factored");
     	System.out.println("relevant size: " + relevant.size());
@@ -404,6 +415,39 @@ public class SamplePropNetStateMachine extends StateMachine {
     	System.out.println("Relevant legals: " + relevantLegals.size());
     }
 
+    private void splitSubgames(Component terminal, List<Component> subgameTerminals, boolean first) {
+    	if (!first && terminal instanceof Proposition) {
+    		subgameTerminals.add(terminal);
+    	}
+    	if (terminal.getSingleInput() instanceof Or) {
+    		for (Component prev : terminal.getSingleInput().getInputs()) {
+    			splitSubgames(prev, subgameTerminals, false);
+    		}
+    	}
+    }
+
+    private int getSubgameLength(Proposition terminal) {
+
+    	return 0;
+    }
+
+    // find the expected score and expected number of moves
+    private int simulateSubgame(Proposition terminal) {
+    	Set<Component> relevant = new HashSet<Component>();
+    	backpropogateFactoring(terminal, relevant);
+
+    	HashMap<GdlSentence, Proposition> basesMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
+
+    	for (Component c : relevant) {
+    		if (basesMap.containsValue(c)) {
+
+    		}
+    	}
+
+    	relevantLegals.clear();
+    	return 0;
+    }
+
     private void backpropogateFactoring(Component component, Set<Component> relevant) {
     	if (relevant.contains(component)) return;
     	if (propNet.getInputPropositions().containsValue(component)) {
@@ -415,11 +459,4 @@ public class SamplePropNetStateMachine extends StateMachine {
     		backpropogateFactoring(input, relevant);
     	}
     }
-
-
-
-
-
-
-
 }
