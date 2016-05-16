@@ -47,6 +47,7 @@ public class propMCTS extends StateMachineGamer
 	static int LEVEL = 2;
 	static Random r = new Random();
 
+	private int subgameIndex;
 	private double expansionFactor;
 	private int expansionFactorTotal = 0;
 	private int expansionFactorNum = 0;
@@ -114,20 +115,23 @@ public class propMCTS extends StateMachineGamer
 				scoreList.set(i, scoreList.get(i) + score);
 				chargeList.set(i, chargeList.get(i) + 1);
 			}
+			scoreList.set(i, scoreList.get(i) / chargeList.get(i));
+			long expTime = subgameMetaTimePerGame / chargeList.get(i);
+			double expFactor = expansionFactorTotal / (double) expansionFactorNum;
+			expansionFactorTotal = 0;
+			expansionFactorNum = 0;
+			int nCharges = (int) (subgameMetaTimePerGame / (expTime * Math.pow(expFactor, LEVEL)));
+			chargeList.set(i, nCharges);
 		}
 
-
-
-		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
-		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
-		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
-		System.out.println("set time: " + machine.getSetTime());
-		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
-		if(numCharges == 0) {
-			numCharges = 1;
+		numCharges = chargeList.get(0);
+		subgameIndex= 0;
+		for(int i = 0; i < numSubgames; i++) {
+			if(scoreList.get(i) < scoreList.get(subgameIndex)) {
+				numCharges = chargeList.get(i);
+				subgameIndex = i;
+			}
 		}
-		System.out.println("num charges: " + numCharges);
-		System.out.println("");
 
 		curNode = new Node(machine.getInitialState(), 0, null, null);
 
