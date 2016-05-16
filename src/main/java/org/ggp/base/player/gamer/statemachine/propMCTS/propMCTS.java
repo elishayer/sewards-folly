@@ -76,37 +76,48 @@ public class propMCTS extends StateMachineGamer
 
 	@Override
     public void stateMachineAbort() {
-        // Sample gamers do no special cleanup when the match ends abruptly.
+        // Propnet MCTS gamer has no special cleanup when the match ends abruptly.
     }
 
     @Override
     public void stateMachineStop() {
-        // Sample gamers do no special cleanup when the match ends normally.
+        // Propnet MCTS gamer has no special cleanup when the match ends normally.
     }
 
     @Override
     public void preview(Game g, long timeout) throws GamePreviewException {
-        // Sample gamers do no game previewing.
+        // Propnet MCTS gamer has no game previewing.
     }
 
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-		//System.out.println("Meta gaming starts");
 		StateMachine machine = getStateMachine();
+		int numSubgames = machine.getNumSubgames();
 
 		long start = System.currentTimeMillis();
 
 		int charges = 0;
 		long depth_start = System.currentTimeMillis();
-		while(System.currentTimeMillis() - start < DEPTH_TIME) {
-			//System.out.println("Starting a new depth charge");
-			//System.out.println(machine.getInitialState());
-			depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
-					true, 0);
-			charges++;
-			// if(charges == 2) {int i = 1/0;}
+
+		long subgameMetaTime = (timeout - System.currentTimeMillis()) / 2;
+		long subgameMetaTimePerGame = subgameMetaTime / numSubgames;
+
+		List<Integer> chargeList = new ArrayList<Integer>();
+		List<Double> scoreList = new ArrayList<Double>();
+		for (int i = 0; i < numSubgames; i++) {
+			chargeList.add(0);
+			scoreList.add(0.0);
+			long subgameEnd = System.currentTimeMillis() + subgameMetaTimePerGame;
+			while(System.currentTimeMillis() < subgameEnd) {
+				double score = depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(), true, 0);
+				scoreList.set(i, scoreList.get(i) + score);
+				chargeList.set(i, chargeList.get(i) + 1);
+			}
 		}
+
+
+
 		explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 		expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
 		System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
@@ -127,15 +138,13 @@ public class propMCTS extends StateMachineGamer
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
 			nodesExplored++;
-			//System.out.println("charing: " + chargesSent);
 		}
 		System.out.println("nodes explored: " + nodesExplored);
 		System.out.println(chargesSent);
 		System.out.println("charges/second: " + (chargesSent / ((System.currentTimeMillis() - depth_start) / 1000.0 )));
 
 		first = true;
-		return;
-    }
+	}
 
     @Override
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException

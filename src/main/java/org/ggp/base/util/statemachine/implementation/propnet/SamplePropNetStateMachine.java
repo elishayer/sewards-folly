@@ -36,34 +36,40 @@ public class SamplePropNetStateMachine extends StateMachine {
     /** The player roles */
     private List<Role> roles;
 
-    /** The relevant legal moves, post factoring */
-    private Set<Proposition> relevantLegals = new HashSet<Proposition>();
+    /** The relevant legal moves by subgame, post factoring */
+    List<Set<Component> > subgameLegals = new ArrayList<Set<Component> >();
 
     private long setTime = 0;
+
+    int smallest, secondSmallest, smallestIndex;
 
     @Override
     public long setTime() {
     	return setTime;
     }
 
+    @Override
+    public int getNumSubgames() {
+    	return subgameLegals.size();
+    }
 
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
      * your discretion.
+     * @throws TransitionDefinitionException
      */
     @Override
-    public void initialize(List<Gdl> description) {
+    public void initialize(List<Gdl> description) throws TransitionDefinitionException {
         long start = System.currentTimeMillis();
 
     	try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
+            ordering = getOrdering();
 
             // factor the propnet, removing any unneeded propsitions
             factorAnalysis();
-
-            ordering = getOrdering();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -78,7 +84,9 @@ public class SamplePropNetStateMachine extends StateMachine {
      * of the terminal proposition for the state.
      */
     @Override
-    public boolean isTerminal(MachineState state) {
+    public boolean isTerminal(MachineState state, int gameIndex, int level) {
+    	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
+    	if (level >= length) return true;
     	setPropnet(state, null);
     	return propNet.getTerminalProposition().getValue();
     }
@@ -91,8 +99,10 @@ public class SamplePropNetStateMachine extends StateMachine {
      * GoalDefinitionException because the goal is ill-defined.
      */
     @Override
-    public int getGoal(MachineState state, Role role)
+    public int getGoal(MachineState state, Role role, int gameIndex, int level)
             throws GoalDefinitionException {
+    	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
+    	if (level >= length) return 0;
         setPropnet(state, null);
         List<Role> roles = propNet.getRoles();
         Set<Proposition> rewards = new HashSet<Proposition>();
@@ -148,7 +158,7 @@ public class SamplePropNetStateMachine extends StateMachine {
      * Computes the legal moves for role in state.
      */
     @Override
-    public List<Move> getLegalMoves(MachineState state, Role role)
+    public List<Move> getLegalMoves(MachineState state, Role role, int gameIndex)
             throws MoveDefinitionException {
     	setPropnet(state, null);
     	List<Role> roles = propNet.getRoles();
@@ -160,7 +170,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
-    		if (relevantLegals.contains(p) && p.getValue()) {
+    		if (subgameLegals.get(gameIndex).contains(p) && p.getValue()) {
     			actions.add(getMoveFromProposition(p));
     		}
     	}
@@ -388,31 +398,41 @@ public class SamplePropNetStateMachine extends StateMachine {
         return new MachineState(contents);
     }
 
-    private void factorAnalysis() {
+    private void factorAnalysis() throws TransitionDefinitionException {
     	Proposition terminal = propNet.getTerminalProposition();
-    	Set<Component> relevant = new HashSet<Component>();
 
     	List<Component> subgameTerminals = new ArrayList<Component>();
     	splitSubgames(terminal, subgameTerminals, true);
-    	System.out.println(subgameTerminals.size());
+
+    	List<Integer> lengthArray = new ArrayList<Integer>();
     	for (Component subgameTerminal : subgameTerminals) {
-    		int length = getSubgameLength((Proposition) subgameTerminal);
+    		lengthArray.add(getSubgameLength((Proposition) subgameTerminal));
+    	}
+    	System.out.println("Length array: " + lengthArray);
+
+    	smallest = secondSmallest = Integer.MAX_VALUE;
+    	smallestIndex = -1;
+    	for (int i = 0; i < lengthArray.size(); i++) {
+    		if (lengthArray.get(i) < smallest || smallestIndex < 0) {
+    			secondSmallest = smallest;
+
+    			smallest = lengthArray.get(i);
+    			smallestIndex = i;
+    		} else if (lengthArray.get(i) < secondSmallest) {
+    			secondSmallest = lengthArray.get(i);
+    		}
     	}
 
-    	backpropogateFactoring(terminal, relevant);
+    	for (Component subgameTerminal : subgameTerminals) {
+    		Set<Component> subgameRelevant = new HashSet<Component>();
+    		Set<Component> legals = new HashSet<Component>();
+    		backpropogateFactoring(subgameTerminal, subgameRelevant, legals);
+    		subgameLegals.add(legals);
+    	}
+
 
     	System.out.println("total num propositions: " + propNet.getComponents().size());
     	System.out.println("factored");
-    	System.out.println("relevant size: " + relevant.size());
-
-    	int count = 0;
-    	Map<Role, Set<Proposition> > temp = propNet.getLegalPropositions();
-    	for (Role role : temp.keySet()) {
-    		count += temp.get(role).size();
-    	}
-
-    	System.out.println("Legals total: " + count);
-    	System.out.println("Relevant legals: " + relevantLegals.size());
     }
 
     private void splitSubgames(Component terminal, List<Component> subgameTerminals, boolean first) {
@@ -426,37 +446,33 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
     }
 
-    private int getSubgameLength(Proposition terminal) {
-
-    	return 0;
-    }
-
-    // find the expected score and expected number of moves
-    private int simulateSubgame(Proposition terminal) {
-    	Set<Component> relevant = new HashSet<Component>();
-    	backpropogateFactoring(terminal, relevant);
-
-    	HashMap<GdlSentence, Proposition> basesMap = (HashMap<GdlSentence, Proposition>) propNet.getBasePropositions();
-
-    	for (Component c : relevant) {
-    		if (basesMap.containsValue(c)) {
-
-    		}
+    private int getSubgameLength(Proposition terminal) throws TransitionDefinitionException {
+    	for (Proposition p : propNet.getPropositions()) {
+    		p.setValue(false);
     	}
+    	propNet.getInitProposition().setValue(true);
+    	Set<MachineState> prevStates = new HashSet<MachineState>();
+    	int count = 1;
 
-    	relevantLegals.clear();
-    	return 0;
+    	MachineState state = getStateFromBase();
+
+    	while (!prevStates.contains(state = getNextState(state, null))) {
+    		if (terminal.getValue()) return count;
+    		prevStates.add(state);
+    		count++;
+    	}
+    	return Integer.MAX_VALUE;
     }
 
-    private void backpropogateFactoring(Component component, Set<Component> relevant) {
+    private void backpropogateFactoring(Component component, Set<Component> relevant, Set<Component> legals) {
     	if (relevant.contains(component)) return;
     	if (propNet.getInputPropositions().containsValue(component)) {
     		Proposition legal = propNet.getLegalInputMap().get(component);
-    		relevantLegals.add(legal);
+    		legals.add(legal);
     	}
     	relevant.add(component);
     	for (Component input : component.getInputs()) {
-    		backpropogateFactoring(input, relevant);
+    		backpropogateFactoring(input, relevant, legals);
     	}
     }
 }
