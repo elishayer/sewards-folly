@@ -51,6 +51,11 @@ public final class CachedStateMachine extends StateMachine
     	return backingStateMachine.setTime();
     }
 
+    @Override
+    public int getNumSubgames() {
+    	return backingStateMachine.getNumSubgames();
+    }
+
     private Entry getEntry(MachineState state)
     {
         if (!ttlCache.containsKey(state))
@@ -62,14 +67,14 @@ public final class CachedStateMachine extends StateMachine
     }
 
     @Override
-    public int getGoal(MachineState state, Role role) throws GoalDefinitionException
+    public int getGoal(MachineState state, Role role, int gameIndex, int level) throws GoalDefinitionException
     {
         Entry entry = getEntry(state);
         synchronized (entry)
         {
             if (!entry.goals.containsKey(role))
             {
-                entry.goals.put(role, backingStateMachine.getGoal(state, role));
+                entry.goals.put(role, backingStateMachine.getGoal(state, role, gameIndex, level));
             }
 
             return entry.goals.get(role);
@@ -93,14 +98,14 @@ public final class CachedStateMachine extends StateMachine
     }
 
     @Override
-    public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
+    public List<Move> getLegalMoves(MachineState state, Role role, int gameIndex) throws MoveDefinitionException
     {
         Entry entry = getEntry(state);
         synchronized (entry)
         {
             if (!entry.moves.containsKey(role))
             {
-                entry.moves.put(role, ImmutableList.copyOf(backingStateMachine.getLegalMoves(state, role)));
+                entry.moves.put(role, ImmutableList.copyOf(backingStateMachine.getLegalMoves(state, role, gameIndex)));
             }
 
             return entry.moves.get(role);
@@ -123,14 +128,14 @@ public final class CachedStateMachine extends StateMachine
     }
 
     @Override
-    public boolean isTerminal(MachineState state)
+    public boolean isTerminal(MachineState state, int gameIndex, int level)
     {
         Entry entry = getEntry(state);
         synchronized (entry)
         {
             if (entry.terminal == null)
             {
-                entry.terminal = backingStateMachine.isTerminal(state);
+                entry.terminal = backingStateMachine.isTerminal(state, gameIndex, level);
             }
 
             return entry.terminal;

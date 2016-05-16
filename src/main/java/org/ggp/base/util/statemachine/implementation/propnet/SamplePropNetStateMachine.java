@@ -50,6 +50,7 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     @Override
     public int getNumSubgames() {
+    	System.out.println("Num subgames requested, num is: " + subgameLegals.size());
     	return subgameLegals.size();
     }
 
