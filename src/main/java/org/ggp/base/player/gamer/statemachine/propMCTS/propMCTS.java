@@ -167,6 +167,7 @@ public class propMCTS extends StateMachineGamer
 		if(numCharges == 0) {
 			numCharges = 1;
 		}
+		//numCharges = 100;
 		System.out.println("num charges: " + numCharges);
 
     	long start = System.currentTimeMillis();

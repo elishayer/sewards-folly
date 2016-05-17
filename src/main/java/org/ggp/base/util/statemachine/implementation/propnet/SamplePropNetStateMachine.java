@@ -177,7 +177,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println("legals " + legals);
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
-    		if (subgameLegals.get(gameIndex).contains(p) && p.getValue()) {
+    		if ((subgameLegals.get(gameIndex).contains(p) || propNet.getLegalInputMap().get(p).getOutputs().size() == 0) && p.getValue()) {
     			actions.add(getMoveFromProposition(p));
     		}
     	}
