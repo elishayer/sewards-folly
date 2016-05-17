@@ -38,6 +38,7 @@ public class ProverStateMachine extends StateMachine
 
     }
 
+
     @Override
     public void initialize(List<Gdl> description)
     {
@@ -53,7 +54,7 @@ public class ProverStateMachine extends StateMachine
     }
 
     @Override
-    public int getGoal(MachineState state, Role role) throws GoalDefinitionException
+    public int getGoal(MachineState state, Role role, int index, int level) throws GoalDefinitionException
     {
         Set<GdlSentence> results = prover.askAll(ProverQueryBuilder.getGoalQuery(role), ProverQueryBuilder.getContext(state));
 
@@ -96,7 +97,7 @@ public class ProverStateMachine extends StateMachine
     }
 
     @Override
-    public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
+    public List<Move> getLegalMoves(MachineState state, Role role, int index) throws MoveDefinitionException
     {
         Set<GdlSentence> results = prover.askAll(ProverQueryBuilder.getLegalQuery(role), ProverQueryBuilder.getContext(state));
 
@@ -131,8 +132,20 @@ public class ProverStateMachine extends StateMachine
     }
 
     @Override
-    public boolean isTerminal(MachineState state)
+    public boolean isTerminal(MachineState state, int index, int level)
     {
         return prover.prove(ProverQueryBuilder.getTerminalQuery(), ProverQueryBuilder.getContext(state));
     }
+
+	@Override
+	public long setTime() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getNumSubgames() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }

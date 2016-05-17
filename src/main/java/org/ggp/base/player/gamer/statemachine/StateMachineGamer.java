@@ -153,8 +153,9 @@ public abstract class StateMachineGamer extends Gamer
      * A function that can be used when deserializing gamers, to bring a
      * state machine gamer back to the internal state that it has when it
      * arrives at a particular game state.
+     * @throws TransitionDefinitionException
      */
-    public final void resetStateFromMatch() {
+    public final void resetStateFromMatch() throws TransitionDefinitionException {
         stateMachine = getInitialStateMachine();
         stateMachine.initialize(getMatch().getGame().getRules());
         currentState = stateMachine.getMachineStateFromSentenceList(getMatch().getMostRecentState());

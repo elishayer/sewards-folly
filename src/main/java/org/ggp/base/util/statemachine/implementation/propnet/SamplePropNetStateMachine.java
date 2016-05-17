@@ -71,6 +71,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 
             // factor the propnet, removing any unneeded propsitions
             factorAnalysis();
+
+            for(int i = 0; i < subgameLegals.size(); i++) {
+            	System.out.println(subgameLegals.get(i).size());
+            }
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -169,6 +174,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     			legals = propNet.getLegalPropositions().get(role);
     		}
     	}
+    	//System.out.println("legals " + legals);
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
     		if (subgameLegals.get(gameIndex).contains(p) && p.getValue()) {
@@ -345,13 +351,16 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     private List<GdlSentence> toDoes(List<Move> moves)
     {
-        List<GdlSentence> doeses = new ArrayList<GdlSentence>(moves.size());
+        //System.out.println(moves);
+    	List<GdlSentence> doeses = new ArrayList<GdlSentence>(moves.size());
         Map<Role, Integer> roleIndices = getRoleIndices();
 
         for (int i = 0; i < roles.size(); i++)
         {
             int index = roleIndices.get(roles.get(i));
-            doeses.add(ProverQueryBuilder.toDoes(roles.get(i), moves.get(index)));
+            if(moves.get(index) != null) {
+            	doeses.add(ProverQueryBuilder.toDoes(roles.get(i), moves.get(index)));
+            }
         }
         return doeses;
     }
@@ -403,13 +412,13 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Proposition terminal = propNet.getTerminalProposition();
 
     	List<Component> subgameTerminals = new ArrayList<Component>();
-    	splitSubgames(terminal, subgameTerminals, true);
+    	splitSubgames(terminal.getSingleInput(), subgameTerminals);
 
     	List<Integer> lengthArray = new ArrayList<Integer>();
     	for (Component subgameTerminal : subgameTerminals) {
-    		lengthArray.add(getSubgameLength((Proposition) subgameTerminal));
+    		lengthArray.add(getSubgameLength(subgameTerminal));
     	}
-    	System.out.println("Length array: " + lengthArray);
+    	//System.out.println("Length array: " + lengthArray);
 
     	smallest = secondSmallest = Integer.MAX_VALUE;
     	smallestIndex = -1;
@@ -423,8 +432,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     			secondSmallest = lengthArray.get(i);
     		}
     	}
-
+    	System.out.println("num games: " + subgameTerminals.size());
     	for (Component subgameTerminal : subgameTerminals) {
+    		System.out.println(subgameTerminal);
     		Set<Component> subgameRelevant = new HashSet<Component>();
     		Set<Component> legals = new HashSet<Component>();
     		backpropogateFactoring(subgameTerminal, subgameRelevant, legals);
@@ -432,22 +442,22 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
 
 
-    	System.out.println("total num propositions: " + propNet.getComponents().size());
-    	System.out.println("factored");
+    	//System.out.println("total num propositions: " + propNet.getComponents().size());
+    	//System.out.println("factored");
     }
 
-    private void splitSubgames(Component terminal, List<Component> subgameTerminals, boolean first) {
-    	if (!first && terminal instanceof Proposition) {
+    private void splitSubgames(Component terminal, List<Component> subgameTerminals) {
+    	System.out.println(terminal);
+    	if (terminal instanceof Or) {
+    		for (Component prev : terminal.getInputs()) {
+    			splitSubgames(prev, subgameTerminals);
+    		}
+    	} else {
     		subgameTerminals.add(terminal);
     	}
-    	if (terminal.getSingleInput() instanceof Or) {
-    		for (Component prev : terminal.getSingleInput().getInputs()) {
-    			splitSubgames(prev, subgameTerminals, false);
-    		}
-    	}
     }
 
-    private int getSubgameLength(Proposition terminal) throws TransitionDefinitionException {
+    private int getSubgameLength(Component terminal) throws TransitionDefinitionException {
     	for (Proposition p : propNet.getPropositions()) {
     		p.setValue(false);
     	}
@@ -468,6 +478,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     private void backpropogateFactoring(Component component, Set<Component> relevant, Set<Component> legals) {
     	if (relevant.contains(component)) return;
     	if (propNet.getInputPropositions().containsValue(component)) {
+    		//System.out.println("legal found");
     		Proposition legal = propNet.getLegalInputMap().get(component);
     		legals.add(legal);
     	}

@@ -110,6 +110,7 @@ public class propMCTS extends StateMachineGamer
 			scoreList.add(0.0);
 			long subgameEnd = System.currentTimeMillis() + subgameMetaTimePerGame;
 			while(System.currentTimeMillis() < subgameEnd) {
+				//System.out.println("test");
 				double score = depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(), true, i, 0);
 				scoreList.set(i, scoreList.get(i) + score);
 				chargeList.set(i, chargeList.get(i) + 1);
@@ -330,12 +331,15 @@ public class propMCTS extends StateMachineGamer
     		List<Move> actions = new ArrayList<Move>();
         	for (int i = 0; i < roles.size(); i++) {
         		List<Move> legals = machine.findLegals(roles.get(i), state, gameIndex);
+        		//System.out.println("legal for role" + i + " : " + legals);
         		if (meta && roles.get(i).equals(role)) {
         			expansionFactorTotal += legals.size();
         			expansionFactorNum++;
         		}
         		if (legals.size() > 0) {
         			actions.add(legals.get(r.nextInt(legals.size())));
+        		} else {
+        			actions.add(null);
         		}
         	}
         	state = machine.getNextState(state, actions);
