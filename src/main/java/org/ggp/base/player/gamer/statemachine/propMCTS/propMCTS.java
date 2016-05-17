@@ -58,6 +58,8 @@ public class propMCTS extends StateMachineGamer
 
 	private Node curNode;
 
+	private long endtime;
+
 	boolean first = true;
 
 	@Override
@@ -93,6 +95,7 @@ public class propMCTS extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+		endtime = timeout;
 		StateMachine machine = getStateMachine();
 		int numSubgames = machine.getNumSubgames();
 
@@ -159,7 +162,8 @@ public class propMCTS extends StateMachineGamer
     @Override
     public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
-		chargesSent = 0;
+		endtime = timeout;
+    	chargesSent = 0;
 
     	System.out.println("NEW SELECT");
 
@@ -180,7 +184,8 @@ public class propMCTS extends StateMachineGamer
 		if(first) {
 			curState = curNode;
 			first = false;
-			//System.out.println("first");
+			System.out.println("first");
+			System.out.println(curState);
 		} else {
 			MachineState state = getCurrentState();
 			for(int i = 0; i < curNode.children.size(); i++) {
@@ -288,12 +293,14 @@ public class propMCTS extends StateMachineGamer
     	}
 
     	//run a MCS for each action
+    	System.out.println(node.state);
     	List<List<Move>> actions = getActions(machine.getRoles(), machine, node.state);
     	List<Move> action = actions.get(r.nextInt(actions.size()));
 
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
     	for(int j = 0; j < numCharges; j++) { //place holder #
+    		if((endtime - System.currentTimeMillis() < SEARCH_TIME) || j > 10000) break;
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, subgameIndex, 0);
     		totalscore += score;
     		chargesSent++;
