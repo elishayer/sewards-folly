@@ -184,6 +184,31 @@ public class SamplePropNetStateMachine extends StateMachine {
         return actions;
     }
 
+
+    /**
+     * Computes the legal moves for other players in state.
+     */
+    @Override
+    public List<Move> getOthersLegalMoves(MachineState state, Role role)
+            throws MoveDefinitionException {
+    	setPropnet(state, null);
+    	List<Role> roles = propNet.getRoles();
+    	Set<Proposition> legals = new HashSet<Proposition>();
+    	for (int i = 0; i < roles.size(); i++) {
+    		if (roles.get(i).equals(role)) {
+    			legals = propNet.getLegalPropositions().get(role);
+    		}
+    	}
+    	//System.out.println("legals " + legals);
+    	List<Move> actions = new ArrayList<Move>();
+    	for (Proposition p : legals) {
+    		if (p.getValue()) {
+    			actions.add(getMoveFromProposition(p));
+    		}
+    	}
+        return actions;
+    }
+
     /**
      * Computes the next state given state and the list of moves.
      */

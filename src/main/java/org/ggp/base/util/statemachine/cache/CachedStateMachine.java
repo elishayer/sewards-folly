@@ -113,6 +113,23 @@ public final class CachedStateMachine extends StateMachine
     }
 
     @Override
+    public List<Move> getOthersLegalMoves(MachineState state, Role role)
+            throws MoveDefinitionException {
+        {
+            Entry entry = getEntry(state);
+            synchronized (entry)
+            {
+                if (!entry.moves.containsKey(role))
+                {
+                    entry.moves.put(role, ImmutableList.copyOf(backingStateMachine.getOthersLegalMoves(state, role)));
+                }
+
+                return entry.moves.get(role);
+            }
+        }
+    }
+
+    @Override
     public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
     {
         Entry entry = getEntry(state);

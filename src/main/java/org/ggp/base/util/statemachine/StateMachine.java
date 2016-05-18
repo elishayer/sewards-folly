@@ -168,6 +168,8 @@ public abstract class StateMachine
     // TODO: There are philosophical reasons for this to return Set<Move> rather than List<Move>.
     public abstract List<Move> getLegalMoves(MachineState state, Role role, int gameIndex) throws MoveDefinitionException;
 
+	public abstract List<Move> getOthersLegalMoves(MachineState state, Role role) throws MoveDefinitionException;
+
     /**
      * Returns the next state of the game given the current state and a joint move
      * list containing one move per role.
@@ -489,4 +491,6 @@ public abstract class StateMachine
             avgScores[j] /= repetitions;
         }
     }
+
+
 }

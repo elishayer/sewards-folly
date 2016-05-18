@@ -374,7 +374,12 @@ public class propMCTS extends StateMachineGamer
     		actions.add(curr);
     		return;
     	} else {
-    		List<Move> possibleActions = machine.getLegalMoves(state, roles.get(i), subgameIndex);
+    		List<Move> possibleActions;
+    		if(roles.get(i) == getRole()) {
+    			possibleActions = machine.getLegalMoves(state, roles.get(i), subgameIndex);
+    		} else {
+    			possibleActions = machine.getOthersLegalMoves(state, roles.get(i));
+    		}
     		for (int j = 0; j < possibleActions.size(); j++) {
     			List<Move> dest = new ArrayList<Move>(curr);
     			dest.add(possibleActions.get(j));
