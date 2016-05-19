@@ -14,8 +14,10 @@ import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
+import org.ggp.base.util.propnet.architecture.components.And;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
+import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -35,6 +37,8 @@ public class SamplePropNetStateMachine extends StateMachine {
     private List<Proposition> ordering;
     /** The player roles */
     private List<Role> roles;
+
+    private List<Proposition> latches = new ArrayList<Proposition>();
 
     /** The relevant legal moves by subgame, post factoring */
     List<Set<Component> > subgameLegals = new ArrayList<Set<Component> >();
@@ -83,6 +87,8 @@ public class SamplePropNetStateMachine extends StateMachine {
 	            	System.out.println(subgameLegals.get(i).size());
 	            }
             }
+
+            identifyLatches();
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -530,4 +536,43 @@ public class SamplePropNetStateMachine extends StateMachine {
     		backpropogateFactoring(input, relevant, legals);
     	}
     }
+
+    // put all latches into the global latches array
+    private void identifyLatches() {
+    	Map<GdlSentence, Proposition> baseMap = propNet.getBasePropositions();
+    	for (GdlSentence key : baseMap.keySet()) {
+    		Proposition base = baseMap.get(key);
+    		base.setValue(true);
+
+    		Set<Component> visited = new HashSet<Component>();
+
+    		if (isLatch(base, true, base, visited, true)) {
+    			System.out.println("is a latch:  " + base);
+    			latches.add(base);
+    		} else {
+    			System.out.println("NOT a latch: " + base);
+    		}
+    	}
+    }
+
+    private boolean isLatch(Component original, boolean target, Component c, Set<Component> visited, boolean first) {
+    	if (c instanceof Transition) {
+    		Component output = c.getSingleOutput();
+    		return output.equals(original) && output.getValue() == target;
+    	}
+    	if (!first && original.equals(c)) return c.getValue() == target;
+    	if (visited.contains(c)) return false;
+    	visited.add(c);
+
+    	for (Component output : c.getOutputs()) {
+    		if (output instanceof Proposition) {
+    			((Proposition) output).setValue(c.getValue());
+    		}
+    		if (!(output instanceof And) && isLatch(original, target, output, visited, false)) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+
 }
