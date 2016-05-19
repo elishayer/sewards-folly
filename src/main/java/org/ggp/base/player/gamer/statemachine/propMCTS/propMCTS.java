@@ -47,7 +47,7 @@ public class propMCTS extends StateMachineGamer
 	static int LEVEL = 2;
 	static Random r = new Random();
 
-	private int subgameIndex;
+	private int subgameIndex = -1;
 	private double expansionFactor;
 	private int expansionFactorTotal = 0;
 	private int expansionFactorNum = 0;
@@ -317,7 +317,7 @@ public class propMCTS extends StateMachineGamer
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
     	for(int j = 0; j < numCharges; j++) { //place holder #
-    		if((endtime - System.currentTimeMillis() < SEARCH_TIME) || j > 10000) break;
+    		if((endtime - System.currentTimeMillis() < SEARCH_TIME)) break;
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, subgameIndex, 0);
     		totalscore += score;
     		chargesSent++;
@@ -361,6 +361,7 @@ public class propMCTS extends StateMachineGamer
         		if (legals.size() > 0) {
         			actions.add(legals.get(r.nextInt(legals.size())));
         		} else {
+        			System.out.println("here");
         			actions.add(null);
         		}
         	}
@@ -389,11 +390,8 @@ public class propMCTS extends StateMachineGamer
     		return;
     	} else {
     		List<Move> possibleActions;
-    		if(roles.get(i) == getRole()) {
-    			possibleActions = machine.getLegalMoves(state, roles.get(i), subgameIndex);
-    		} else {
-    			possibleActions = machine.getOthersLegalMoves(state, roles.get(i));
-    		}
+   			possibleActions = machine.getLegalMoves(state, roles.get(i), subgameIndex);
+
     		for (int j = 0; j < possibleActions.size(); j++) {
     			List<Move> dest = new ArrayList<Move>(curr);
     			dest.add(possibleActions.get(j));
