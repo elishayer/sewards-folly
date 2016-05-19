@@ -50,8 +50,13 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     @Override
     public int getNumSubgames() {
-    	System.out.println("Num subgames requested, num is: " + subgameLegals.size());
-    	return subgameLegals.size();
+    	if (roles.size() == 1) {
+    		System.out.println("Num subgames requested, num is: " + subgameLegals.size());
+        	return subgameLegals.size();
+    	} else {
+    		return 1;
+    	}
+
     }
 
     /**
@@ -69,11 +74,14 @@ public class SamplePropNetStateMachine extends StateMachine {
             roles = propNet.getRoles();
             ordering = getOrdering();
 
-            // factor the propnet, removing any unneeded propsitions
-            factorAnalysis();
+            // factoring for single player only
+            if (roles.size() == 1) {
+	            // factor the propnet, removing any unneeded propsitions
+	            factorAnalysis();
 
-            for(int i = 0; i < subgameLegals.size(); i++) {
-            	System.out.println(subgameLegals.get(i).size());
+	            for(int i = 0; i < subgameLegals.size(); i++) {
+	            	System.out.println(subgameLegals.get(i).size());
+	            }
             }
 
         } catch (InterruptedException e) {
@@ -91,8 +99,10 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state, int gameIndex, int level) {
-    	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
-    	if (level >= length) return true;
+    	if (roles.size() == 1) {
+        	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
+        	if (level >= length) return true;
+    	}
     	setPropnet(state, null);
     	return propNet.getTerminalProposition().getValue();
     }
@@ -107,8 +117,10 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role, int gameIndex, int level)
             throws GoalDefinitionException {
-    	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
-    	if (level >= length) return 0;
+    	if (roles.size() == 1) {
+        	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
+        	if (level >= length) return 0;
+    	}
         setPropnet(state, null);
         List<Role> roles = propNet.getRoles();
         Set<Proposition> rewards = new HashSet<Proposition>();
@@ -177,8 +189,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     	//System.out.println("legals " + legals);
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
-    		if ((subgameLegals.get(gameIndex).contains(p) || propNet.getLegalInputMap().get(p).getOutputs().size() == 0) && p.getValue()) {
-    			actions.add(getMoveFromProposition(p));
+    		if (roles.size() == 1) {
+        		if ((subgameLegals.get(gameIndex).contains(p) || propNet.getLegalInputMap().get(p).getOutputs().size() == 0) && p.getValue()) {
+        			actions.add(getMoveFromProposition(p));
+        		}
+    		} else {
+        		if (p.getValue()) {
+        			actions.add(getMoveFromProposition(p));
+        		}
     		}
     	}
         return actions;

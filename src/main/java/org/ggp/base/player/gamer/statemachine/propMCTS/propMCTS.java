@@ -96,54 +96,77 @@ public class propMCTS extends StateMachineGamer
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
 		endtime = timeout;
-		StateMachine machine = getStateMachine();
-		int numSubgames = machine.getNumSubgames();
-
 		long depth_start = System.currentTimeMillis();
+		StateMachine machine = getStateMachine();
 
-		long subgameMetaTime = (timeout - System.currentTimeMillis()) / 2;
-		long subgameMetaTimePerGame = subgameMetaTime / numSubgames;
-		System.out.println("subgameMetaTimePerGame: " + subgameMetaTimePerGame);
+		List<Role> roles = machine.getRoles();
 
-		List<Integer> chargeList = new ArrayList<Integer>();
-		List<Double> scoreList = new ArrayList<Double>();
-		for (int i = 0; i < numSubgames; i++) {
-			System.out.println("game: " + i + " of " + numSubgames);
-			chargeList.add(0);
-			scoreList.add(0.0);
-			long subgameEnd = System.currentTimeMillis() + subgameMetaTimePerGame;
-			while(System.currentTimeMillis() < subgameEnd) {
-				//System.out.println("test");
-				double score = depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(), true, i, 0);
-				scoreList.set(i, scoreList.get(i) + score);
-				chargeList.set(i, chargeList.get(i) + 1);
+		if (roles.size() == 1) {
+
+			int numSubgames = machine.getNumSubgames();
+
+			long subgameMetaTime = (timeout - System.currentTimeMillis()) / 2;
+			long subgameMetaTimePerGame = subgameMetaTime / numSubgames;
+			System.out.println("subgameMetaTimePerGame: " + subgameMetaTimePerGame);
+
+			List<Integer> chargeList = new ArrayList<Integer>();
+			List<Double> scoreList = new ArrayList<Double>();
+			for (int i = 0; i < numSubgames; i++) {
+				System.out.println("game: " + i + " of " + numSubgames);
+				chargeList.add(0);
+				scoreList.add(0.0);
+				long subgameEnd = System.currentTimeMillis() + subgameMetaTimePerGame;
+				while(System.currentTimeMillis() < subgameEnd) {
+					//System.out.println("test");
+					double score = depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(), true, i, 0);
+					scoreList.set(i, scoreList.get(i) + score);
+					chargeList.set(i, chargeList.get(i) + 1);
+				}
+				scoreList.set(i, scoreList.get(i) / chargeList.get(i));
+				System.out.println("total number of charges: " + chargeList.get(i));
+				System.out.println("total score: " + scoreList.get(i));
+				long expTime = 1 + subgameMetaTimePerGame / chargeList.get(i);
+				System.out.println("observed time per depth charge: " + expTime);
+				double expFactor = expansionFactorTotal / (double) expansionFactorNum;
+				System.out.println("expansion factor: " + expFactor);
+				expansionFactorTotal = 0;
+				expansionFactorNum = 0;
+
+				int nCharges = (int) (subgameMetaTimePerGame / (expTime * Math.pow(expFactor, LEVEL)));
+				chargeList.set(i, nCharges);
+				System.out.println("score: " + scoreList.get(i) + " | numCharges: " + chargeList.get(i));
 			}
-			scoreList.set(i, scoreList.get(i) / chargeList.get(i));
-			System.out.println("total number of charges: " + chargeList.get(i));
-			System.out.println("total score: " + scoreList.get(i));
-			long expTime = 1 + subgameMetaTimePerGame / chargeList.get(i);
-			System.out.println("observed time per depth charge: " + expTime);
-			double expFactor = expansionFactorTotal / (double) expansionFactorNum;
-			System.out.println("expansion factor: " + expFactor);
-			expansionFactorTotal = 0;
-			expansionFactorNum = 0;
-
-			int nCharges = (int) (subgameMetaTimePerGame / (expTime * Math.pow(expFactor, LEVEL)));
-			chargeList.set(i, nCharges);
-			System.out.println("score: " + scoreList.get(i) + " | numCharges: " + chargeList.get(i));
-		}
-		numCharges = chargeList.get(0);
-		subgameIndex = 0;
-		for (int i = 0; i < numSubgames; i++) {
-			if (scoreList.get(i) < scoreList.get(subgameIndex)) {
-				numCharges = chargeList.get(i);
-				subgameIndex = i;
+			numCharges = chargeList.get(0);
+			subgameIndex = 0;
+			for (int i = 0; i < numSubgames; i++) {
+				if (scoreList.get(i) < scoreList.get(subgameIndex)) {
+					numCharges = chargeList.get(i);
+					subgameIndex = i;
+				}
 			}
+			System.out.println("Num charges: " + numCharges + " | Subgame index: " + subgameIndex);
+		} else {
+			int charges = 0;
+			while(System.currentTimeMillis() - depth_start < DEPTH_TIME) {
+				//System.out.println("Starting a new depth charge");
+				//System.out.println(machine.getInitialState());
+				depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
+						true, -1, 0);
+				charges++;
+				// if(charges == 2) {int i = 1/0;}
+			}
+			explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
+			expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
+			System.out.println("time: " + explorationTime + " | e-factor: " + expansionFactor);
+			System.out.println("set time: " + machine.getSetTime());
+			numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
+			if(numCharges == 0) {
+				numCharges = 1;
+			}
+			System.out.println("num charges: " + numCharges);
+			System.out.println("");
 		}
-		System.out.println("Num charges: " + numCharges + " | Subgame index: " + subgameIndex);
-
 		curNode = new Node(machine.getInitialState(), 0, null, null);
-
 		int nodesExplored = 0;
 		chargesSent = 0;
 		depth_start = System.currentTimeMillis();
@@ -168,10 +191,10 @@ public class propMCTS extends StateMachineGamer
     	System.out.println("NEW SELECT");
 
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
-		if(numCharges == 0) {
+		if (numCharges == 0) {
 			numCharges = 1;
 		}
-		//numCharges = 100;
+
 		System.out.println("num charges: " + numCharges);
 
     	long start = System.currentTimeMillis();
@@ -188,11 +211,10 @@ public class propMCTS extends StateMachineGamer
 			System.out.println(curState);
 		} else {
 			MachineState state = getCurrentState();
-			for(int i = 0; i < curNode.children.size(); i++) {
-				if(curNode.children.get(i).state.equals(state)) {
+			for (int i = 0; i < curNode.children.size(); i++) {
+				if (curNode.children.get(i).state.equals(state)) {
 					curState = curNode.children.get(i);
 					curNode = curState;
-					//System.out.println("chosen");
 					break;
 				}
 			}
@@ -206,10 +228,8 @@ public class propMCTS extends StateMachineGamer
 
 		System.out.println("charges sent: " + chargesSent);
 
-		//System.out.println(getNodeCount(curState, machine));
 		Role role = getRole();
 		List<Role> roles = machine.getRoles();
-
 
 		int roleIndex = 0;
 		for(int i = 0; i < roles.size(); i++) {
@@ -278,13 +298,11 @@ public class propMCTS extends StateMachineGamer
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	//avoid expanding a null node
     	if (node == null) {
-    		//System.out.println("null");
     		return;
     	}
 
 		//if terminal then a MCS is not needed
     	if (machine.findTerminalp(node.state, subgameIndex, 0)) {
-    		//System.out.println("term");
     		node.visits++;
     		int score = machine.findReward(role, node.state, subgameIndex, 0);
     		node.score = score;
@@ -293,7 +311,6 @@ public class propMCTS extends StateMachineGamer
     	}
 
     	//run a MCS for each action
-    	System.out.println(node.state);
     	List<List<Move>> actions = getActions(machine.getRoles(), machine, node.state);
     	List<Move> action = actions.get(r.nextInt(actions.size()));
 
@@ -304,9 +321,7 @@ public class propMCTS extends StateMachineGamer
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, subgameIndex, 0);
     		totalscore += score;
     		chargesSent++;
-
     	}
-		//System.out.println(chargesSent);
 
     	totalscore /= numCharges;
    		//add nodes to tree
@@ -339,7 +354,6 @@ public class propMCTS extends StateMachineGamer
     		List<Move> actions = new ArrayList<Move>();
         	for (int i = 0; i < roles.size(); i++) {
         		List<Move> legals = machine.findLegals(roles.get(i), state, gameIndex);
-        		//System.out.println("legal for role" + i + " : " + legals);
         		if (meta && roles.get(i).equals(role)) {
         			expansionFactorTotal += legals.size();
         			expansionFactorNum++;
