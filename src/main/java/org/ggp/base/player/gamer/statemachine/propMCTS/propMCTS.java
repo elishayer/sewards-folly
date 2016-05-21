@@ -101,9 +101,9 @@ public class propMCTS extends StateMachineGamer
 
 		List<Role> roles = machine.getRoles();
 
-		if (roles.size() == 1) {
+		int numSubgames = machine.getNumSubgames();
 
-			int numSubgames = machine.getNumSubgames();
+		if (roles.size() == 1 && numSubgames > 1) {
 
 			long subgameMetaTime = (timeout - System.currentTimeMillis()) / 2;
 			long subgameMetaTimePerGame = subgameMetaTime / numSubgames;
@@ -147,7 +147,7 @@ public class propMCTS extends StateMachineGamer
 			System.out.println("Num charges: " + numCharges + " | Subgame index: " + subgameIndex);
 		} else {
 			int charges = 0;
-			while(System.currentTimeMillis() - depth_start < DEPTH_TIME) {
+			while (System.currentTimeMillis() - depth_start < DEPTH_TIME) {
 				//System.out.println("Starting a new depth charge");
 				//System.out.println(machine.getInitialState());
 				depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
@@ -170,7 +170,8 @@ public class propMCTS extends StateMachineGamer
 		int nodesExplored = 0;
 		chargesSent = 0;
 		depth_start = System.currentTimeMillis();
-		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+		while (timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+			// System.out.println("New select/expand, time left: " + (timeout - System.currentTimeMillis() - SEARCH_TIME));
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
 			nodesExplored++;
@@ -361,7 +362,6 @@ public class propMCTS extends StateMachineGamer
         		if (legals.size() > 0) {
         			actions.add(legals.get(r.nextInt(legals.size())));
         		} else {
-        			System.out.println("here");
         			actions.add(null);
         		}
         	}
