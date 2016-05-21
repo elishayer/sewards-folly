@@ -109,11 +109,19 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state, int gameIndex, int level) {
+    	System.out.println(state);
     	if (roles.size() == 1 && factor) {
         	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
         	if (level >= length) return true;
     	}
     	setPropnet(state, null);
+    	for(Proposition p: deadStates.keySet()) {
+    		if(p.getValue()) {
+    			System.out.println("deadstate reached");
+    			return true;
+    		}
+    	}
+
     	return propNet.getTerminalProposition().getValue();
     }
 
@@ -132,6 +140,13 @@ public class SamplePropNetStateMachine extends StateMachine {
         	if (level >= length) return 0;
     	}
         setPropnet(state, null);
+    	for(Proposition p: deadStates.keySet()) {
+    		if(p.getValue()) {
+    			System.out.println("exiting with value " + deadStates.get(p));
+    			return deadStates.get(p);
+    		}
+    	}
+
         List<Role> roles = propNet.getRoles();
         Set<Proposition> rewards = new HashSet<Proposition>();
         for (int i = 0; i < roles.size(); i++) {
@@ -609,7 +624,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	}
 
     	for(Component output : c.getOutputs()) {
-    		if((pos && output instanceof And) || (!pos && output instanceof Or) || output instanceof Transition) {
+    		if((pos && output instanceof And) || (!pos && output instanceof Or)) {
     			return false;
     		}
     		if(isDeadState(output, score, goalStates, output instanceof Not ? !pos : pos, visited)) {
