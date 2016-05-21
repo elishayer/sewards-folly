@@ -15,6 +15,7 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.architecture.components.Transition;
@@ -41,6 +42,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     private boolean factor = true;
 
     private List<Proposition> latches = new ArrayList<Proposition>();
+    private HashMap<Proposition, Integer> deadStates = new HashMap<Proposition, Integer>();
 
     /** The relevant legal moves by subgame, post factoring */
     List<Set<Component> > subgameLegals = new ArrayList<Set<Component> >();
@@ -580,6 +582,41 @@ public class SamplePropNetStateMachine extends StateMachine {
     			return true;
     		}
     	}
+    	return false;
+    }
+
+    @Override
+    public void getDeadStates(Role role) {
+    	Set<Proposition> goalStates = propNet.getGoalPropositions().get(role);
+    	Set<Component> visited = new HashSet<Component>();
+
+    	for(Proposition p: latches) {
+    		Integer score = 0;
+    		if(isDeadState(p, score, goalStates, true, visited)) {
+    			deadStates.put(p, score);
+    		}
+    	}
+    	System.out.println(deadStates);
+    }
+
+    private boolean isDeadState(Component c, Integer score, Set<Proposition> goalStates, boolean pos, Set<Component> visited) {
+    	if(visited.contains(c)) return false;
+    	visited.add(c);
+
+    	if(c instanceof Proposition && goalStates.contains(c)) {
+    		score = getGoalValue((Proposition) c);
+    		return true;
+    	}
+
+    	for(Component output : c.getOutputs()) {
+    		if((pos && output instanceof And) || (!pos && output instanceof Or) || output instanceof Transition) {
+    			return false;
+    		}
+    		if(isDeadState(output, score, goalStates, output instanceof Not ? !pos : pos, visited)) {
+    			return true;
+    		}
+    	}
+
     	return false;
     }
 

@@ -98,6 +98,7 @@ public class propMCTS extends StateMachineGamer
 		endtime = timeout;
 		long depth_start = System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
+		machine.getDeadStates(getRole());
 
 		List<Role> roles = machine.getRoles();
 

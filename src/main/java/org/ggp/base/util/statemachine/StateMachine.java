@@ -119,6 +119,8 @@ public abstract class StateMachine
     // state machine implementation.
     public abstract long setTime();
 
+    public abstract void getDeadStates(Role role);
+
     public abstract int getNumSubgames();
 
     /**
