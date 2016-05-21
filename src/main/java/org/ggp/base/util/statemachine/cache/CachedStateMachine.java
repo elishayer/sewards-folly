@@ -51,6 +51,11 @@ public final class CachedStateMachine extends StateMachine
     	return backingStateMachine.setTime();
     }
 
+	@Override
+	public void getDeadStates(Role role) {
+		backingStateMachine.getDeadStates(role);
+	}
+
     @Override
     public int getNumSubgames() {
     	return backingStateMachine.getNumSubgames();
