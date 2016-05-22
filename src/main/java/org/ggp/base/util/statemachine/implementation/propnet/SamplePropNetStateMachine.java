@@ -82,6 +82,8 @@ public class SamplePropNetStateMachine extends StateMachine {
             roles = propNet.getRoles();
             ordering = getOrdering();
 
+            removeAnons();
+
             // factoring for single player only
             if (roles.size() == 1 && factor) {
 	            // factor the propnet, removing any unneeded propsitions
@@ -92,7 +94,7 @@ public class SamplePropNetStateMachine extends StateMachine {
 	            }
             }
 
-            identifyLatches();
+            //identifyLatches();
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -313,6 +315,21 @@ public class SamplePropNetStateMachine extends StateMachine {
         		order.add((Proposition) fullOrder.get(i));
         	}
         }
+
+        /*
+        System.out.println("bases");
+        for(Proposition p: propNet.getBasePropositions().values()) {
+        	System.out.println(p);
+
+        }
+        System.out.println("");
+
+        for(Proposition p: order) {
+        	System.out.println(p);
+
+        }
+        int i = 1/0;
+        */
         return order;
     }
 
@@ -321,6 +338,26 @@ public class SamplePropNetStateMachine extends StateMachine {
     public List<Role> getRoles() {
         return roles;
     }
+
+    private void removeAnons() {
+    	List<Proposition> propositions = new ArrayList<Proposition>(propNet.getPropositions());
+    	for(int i = 0; i < propositions.size(); i++) {
+    		System.out.println("prop " + i + " of " + propositions.size());
+    		Proposition p = propositions.get(i);
+    		System.out.println(p);
+    		if(p.getName().toString() == "anon") {
+    			System.out.println("removed");
+    			if(p.getOutputs().size() != 0 && p.getInputs().size() != 0) {
+    				p.getSingleOutput().addInput(p.getSingleInput());
+    				p.getSingleInput().addOutput(p.getSingleOutput());
+    			}
+    			propNet.removeComponent(p);
+    			propositions.remove(i);
+    			i--;
+    		}
+       	}
+    }
+
 
     /**
      * Predicate function for whether the component c should be added
