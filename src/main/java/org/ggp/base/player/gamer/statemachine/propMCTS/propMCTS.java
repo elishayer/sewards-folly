@@ -300,7 +300,6 @@ public class propMCTS extends StateMachineGamer
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	//avoid expanding a null node
     	if (node == null) {
-    		System.out.println("Null node");
     		return;
     	}
 
@@ -353,9 +352,7 @@ public class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int gameIndex, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-    	System.out.println("Depth charge starting here: " + state);
     	while(!machine.findTerminalp(state, gameIndex, level)) {
-        	System.out.println("curState " + state);
     		List<Move> actions = new ArrayList<Move>();
 
     		for (int i = 0; i < roles.size(); i++) {
@@ -370,12 +367,8 @@ public class propMCTS extends StateMachineGamer
         			actions.add(null);
         		}
         	}
-        	System.out.println("actions " + actions);
-
         	state = machine.getNextState(state, actions);
     	}
-
-    	System.out.println("terminal: " + state);
 
     	return machine.findReward(role, state, gameIndex, level);
     }

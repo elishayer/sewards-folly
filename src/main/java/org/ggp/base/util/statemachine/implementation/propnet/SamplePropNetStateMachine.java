@@ -41,7 +41,8 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     private boolean factor = true;
 
-    private List<Proposition> latches = new ArrayList<Proposition>();
+    private List<Proposition> posLatches = new ArrayList<Proposition>();
+    private List<Proposition> negLatches = new ArrayList<Proposition>();
     private HashMap<Proposition, Integer> deadStates = new HashMap<Proposition, Integer>();
 
     /** The relevant legal moves by subgame, post factoring */
@@ -316,20 +317,6 @@ public class SamplePropNetStateMachine extends StateMachine {
         	}
         }
 
-        /*
-        System.out.println("bases");
-        for(Proposition p: propNet.getBasePropositions().values()) {
-        	System.out.println(p);
-
-        }
-        System.out.println("");
-
-        for(Proposition p: order) {
-        	System.out.println(p);
-
-        }
-        int i = 1/0;
-        */
         return order;
     }
 
@@ -608,16 +595,19 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     		Set<Component> visited = new HashSet<Component>();
 
-    		if (isLatch(base, true, base, visited, true)) {
-    			System.out.println("is a latch:  " + base);
-    			latches.add(base);
+    		if (isPosLatch(base, true, base, visited, true)) {
+    			System.out.println("is a POSITIVE latch:  " + base);
+    			posLatches.add(base);
+    		} else if (isNegLatch(base, false, base, visited, true)) {
+    			System.out.println("is a NEGATIVE latch:  " + base);
+    			negLatches.add(base);
     		} else {
-    			System.out.println("NOT a latch: " + base);
+    			System.out.println("is NOT a latch:  " + base);
     		}
     	}
     }
 
-    private boolean isLatch(Component original, boolean target, Component c, Set<Component> visited, boolean first) {
+    private boolean isPosLatch(Component original, boolean target, Component c, Set<Component> visited, boolean first) {
     	if (c instanceof Transition) {
     		Component output = c.getSingleOutput();
     		return output.equals(original) && output.getValue() == target;
@@ -630,7 +620,27 @@ public class SamplePropNetStateMachine extends StateMachine {
     		if (output instanceof Proposition) {
     			((Proposition) output).setValue(c.getValue());
     		}
-    		if (!(output instanceof And) && isLatch(original, target, output, visited, false)) {
+    		if (!(output instanceof And) && isPosLatch(original, target, output, visited, false)) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+
+    private boolean isNegLatch(Component original, boolean target, Component c, Set<Component> visited, boolean first) {
+    	if (c instanceof Transition) {
+    		Component output = c.getSingleOutput();
+    		return output.equals(original) && output.getValue() == target;
+    	}
+    	if (!first && original.equals(c)) return c.getValue() == target;
+    	if (visited.contains(c)) return false;
+    	visited.add(c);
+
+    	for (Component output : c.getOutputs()) {
+    		if (output instanceof Proposition) {
+    			((Proposition) output).setValue(c.getValue());
+    		}
+    		if (!(output instanceof Or) && isNegLatch(original, target, output, visited, false)) {
     			return true;
     		}
     	}
@@ -642,9 +652,18 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Set<Proposition> goalStates = propNet.getGoalPropositions().get(role);
     	Set<Component> visited = new HashSet<Component>();
 
-    	for (Proposition p: latches) {
+    	for (Proposition p: posLatches) {
     		Integer score = 0;
     		if (isDeadState(p, score, goalStates, true, visited)) {
+    			System.out.println("This is a dead state: " + p);
+    			deadStates.put(p, score);
+    		} else {
+    			System.out.println("This is NOT a dead state: " + p);
+    		}
+    	}
+    	for (Proposition p: negLatches) {
+    		Integer score = 0;
+    		if (isDeadState(p, score, goalStates, false, visited)) {
     			System.out.println("This is a dead state: " + p);
     			deadStates.put(p, score);
     		} else {

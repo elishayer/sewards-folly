@@ -155,6 +155,9 @@ public final class GdlFactory
             body.add(createLiteral(list.get(i)));
         }
 
+        // TODO: reorder the body literals
+        System.out.println(list);
+
         return GdlPool.getRule(head, body);
     }
 
