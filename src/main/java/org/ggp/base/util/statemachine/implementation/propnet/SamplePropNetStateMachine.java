@@ -82,7 +82,7 @@ public class SamplePropNetStateMachine extends StateMachine {
             roles = propNet.getRoles();
             ordering = getOrdering();
 
-            removeAnons();
+            // removeAnons();
 
             // factoring for single player only
             if (roles.size() == 1 && factor) {
@@ -94,7 +94,7 @@ public class SamplePropNetStateMachine extends StateMachine {
 	            }
             }
 
-            //identifyLatches();
+            identifyLatches();
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -117,8 +117,8 @@ public class SamplePropNetStateMachine extends StateMachine {
         	if (level >= length) return true;
     	}
     	setPropnet(state, null);
-    	for(Proposition p: deadStates.keySet()) {
-    		if(p.getValue()) {
+    	for (Proposition p: deadStates.keySet()) {
+    		if (p.getValue()) {
     			System.out.println("deadstate reached");
     			return true;
     		}
@@ -642,29 +642,32 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Set<Proposition> goalStates = propNet.getGoalPropositions().get(role);
     	Set<Component> visited = new HashSet<Component>();
 
-    	for(Proposition p: latches) {
+    	for (Proposition p: latches) {
     		Integer score = 0;
-    		if(isDeadState(p, score, goalStates, true, visited)) {
+    		if (isDeadState(p, score, goalStates, true, visited)) {
+    			System.out.println("This is a dead state: " + p);
     			deadStates.put(p, score);
+    		} else {
+    			System.out.println("This is NOT a dead state: " + p);
     		}
     	}
-    	System.out.println(deadStates);
+    	System.out.println("Here are the dead states: " + deadStates);
     }
 
     private boolean isDeadState(Component c, Integer score, Set<Proposition> goalStates, boolean pos, Set<Component> visited) {
-    	if(visited.contains(c)) return false;
+    	if (visited.contains(c)) return false;
     	visited.add(c);
 
-    	if(c instanceof Proposition && goalStates.contains(c)) {
+    	if (c instanceof Proposition && goalStates.contains(c)) {
     		score = getGoalValue((Proposition) c);
     		return true;
     	}
 
     	for(Component output : c.getOutputs()) {
-    		if((pos && output instanceof And) || (!pos && output instanceof Or)) {
+    		if ((pos && output instanceof And) || (!pos && output instanceof Or)) {
     			return false;
     		}
-    		if(isDeadState(output, score, goalStates, output instanceof Not ? !pos : pos, visited)) {
+    		if (isDeadState(output, score, goalStates, output instanceof Not ? !pos : pos, visited)) {
     			return true;
     		}
     	}

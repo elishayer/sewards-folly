@@ -98,7 +98,7 @@ public class propMCTS extends StateMachineGamer
 		endtime = timeout;
 		long depth_start = System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
-		//machine.getDeadStates(getRole());
+		machine.getDeadStates(getRole());
 
 		List<Role> roles = machine.getRoles();
 
@@ -154,7 +154,7 @@ public class propMCTS extends StateMachineGamer
 				depthCharge(machine, machine.getRoles(), getRole(), machine.getInitialState(),
 						true, -1, 0);
 				charges++;
-				// if(charges == 2) {int i = 1/0;}
+				// if(charges == 10) {int i = 1/0;}
 			}
 			explorationTime = (System.currentTimeMillis() - depth_start) / charges + 1;
 			expansionFactor = expansionFactorTotal / (double) expansionFactorNum;
@@ -206,7 +206,7 @@ public class propMCTS extends StateMachineGamer
 
 		Node curState = null;
 		//System.out.println("is first: " + first);
-		if(first) {
+		if (first) {
 			curState = curNode;
 			first = false;
 			System.out.println("first");
@@ -287,7 +287,7 @@ public class propMCTS extends StateMachineGamer
     		}
     	}
 
-    	return select(result);
+    	return result == null ? node : select(result);
     }
 
     double selectfn(Node node) {
@@ -300,6 +300,7 @@ public class propMCTS extends StateMachineGamer
     private void expand(Node node, StateMachine machine, Role role) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
     	//avoid expanding a null node
     	if (node == null) {
+    		System.out.println("Null node");
     		return;
     	}
 
@@ -352,6 +353,7 @@ public class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int gameIndex, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	System.out.println("Depth charge starting here: " + state);
     	while(!machine.findTerminalp(state, gameIndex, level)) {
         	System.out.println("curState " + state);
     		List<Move> actions = new ArrayList<Move>();
@@ -372,6 +374,8 @@ public class propMCTS extends StateMachineGamer
 
         	state = machine.getNextState(state, actions);
     	}
+
+    	System.out.println("terminal: " + state);
 
     	return machine.findReward(role, state, gameIndex, level);
     }
