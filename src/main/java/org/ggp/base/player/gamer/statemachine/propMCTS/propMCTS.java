@@ -69,7 +69,7 @@ public class propMCTS extends StateMachineGamer
 
 	@Override
     public StateMachine getInitialStateMachine() {
-        return new CachedStateMachine(new SamplePropNetStateMachine());
+		return new CachedStateMachine(new SamplePropNetStateMachine());
     }
 
 	@Override
@@ -95,11 +95,11 @@ public class propMCTS extends StateMachineGamer
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
     {
+		System.out.println("metagaming");
 		endtime = timeout;
 		long depth_start = System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
 		machine.getDeadStates(getRole());
-
 		List<Role> roles = machine.getRoles();
 
 		int numSubgames = machine.getNumSubgames();

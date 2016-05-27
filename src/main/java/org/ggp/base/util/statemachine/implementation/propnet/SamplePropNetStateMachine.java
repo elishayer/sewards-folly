@@ -19,7 +19,6 @@ import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.architecture.components.Transition;
-import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -27,6 +26,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
 
 
@@ -52,6 +52,10 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     int smallest, secondSmallest, smallestIndex;
 
+    private ProverStateMachine prover = new ProverStateMachine();
+
+    private boolean built = false;
+
     @Override
     public long setTime() {
     	return setTime;
@@ -59,6 +63,7 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     @Override
     public int getNumSubgames() {
+    	if (!built) return 1;
     	if (roles.size() == 1 && factor) {
     		System.out.println("Num subgames requested, num is: " + subgameLegals.size());
         	return subgameLegals.size();
@@ -76,12 +81,21 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) throws TransitionDefinitionException {
+    	System.out.println("prover pre " + System.currentTimeMillis());
+    	System.out.println("description " + description);
+    	prover.initialize(description);
+    	System.out.println("prover post " + System.currentTimeMillis());
+    	/*
         long start = System.currentTimeMillis();
-
+        System.out.println("Starting initialize at" + start);
     	try {
+    		System.out.println("Propnet building starting " + System.currentTimeMillis());
             propNet = OptimizingPropNetFactory.create(description);
+            System.out.println("Propnet built at " + System.currentTimeMillis());
             roles = propNet.getRoles();
+            System.out.println("Starting the ordering " + System.currentTimeMillis());
             ordering = getOrdering();
+            System.out.println("Done getting the ordering " + System.currentTimeMillis());
 
             // removeAnons();
 
@@ -103,7 +117,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     	long end = System.currentTimeMillis();
     	System.out.println("propnet size: " + propNet.getPropositions().size());
     	System.out.println("time to build propnet: " + (end - start));
-    	propNet.renderToFile("propnet-viz.dot");
+    	// propNet.renderToFile("propnet-viz.dot");
+    	built = true;
+    	*/
     }
 
     /**
@@ -112,7 +128,9 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state, int gameIndex, int level) {
-    	System.out.println(state);
+    	if (!built) {
+    		return prover.isTerminal(state, gameIndex, level);
+    	}
     	if (roles.size() == 1 && factor) {
         	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
         	if (level >= length) return true;
@@ -138,6 +156,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role, int gameIndex, int level)
             throws GoalDefinitionException {
+    	if (!built) {
+    		return prover.getGoal(state, role, gameIndex, level);
+    	}
     	if (roles.size() == 1 && factor) {
         	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
         	if (level >= length) return 0;
@@ -176,6 +197,9 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public MachineState getInitialState() {
+    	if (!built) {
+    		return prover.getInitialState();
+    	}
     	setPropnet(null, null);
     	propNet.getInitProposition().setValue(true);
     	return getStateFromBase();
@@ -187,6 +211,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role)
             throws MoveDefinitionException {
+    	if (!built) {
+    		return prover.findActions(role);
+    	}
     	Set<Proposition> legals = new HashSet<Proposition>();
     	for (int i = 0; i < roles.size(); i++) {
     		if (roles.get(i).equals(role)) {
@@ -206,6 +233,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role, int gameIndex)
             throws MoveDefinitionException {
+    	if (!built) {
+    		return prover.getLegalMoves(state, role, gameIndex);
+    	}
     	setPropnet(state, null);
     	List<Role> roles = propNet.getRoles();
     	Set<Proposition> legals = new HashSet<Proposition>();
@@ -214,7 +244,6 @@ public class SamplePropNetStateMachine extends StateMachine {
     			legals = propNet.getLegalPropositions().get(role);
     		}
     	}
-    	//System.out.println("legals " + legals);
     	List<Move> actions = new ArrayList<Move>();
     	for (Proposition p : legals) {
     		if (roles.size() == 1 && factor) {
@@ -261,6 +290,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
+    	if (!built) {
+    		return prover.getNextState(state, moves);
+    	}
     	setPropnet(state, moves);
         return getStateFromBase();
     }
@@ -323,6 +355,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     /* Already implemented for you */
     @Override
     public List<Role> getRoles() {
+    	if (!built) return prover.getRoles();
         return roles;
     }
 
@@ -649,6 +682,7 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     @Override
     public void getDeadStates(Role role) {
+    	if (!built) return;
     	Set<Proposition> goalStates = propNet.getGoalPropositions().get(role);
     	Set<Component> visited = new HashSet<Component>();
 
