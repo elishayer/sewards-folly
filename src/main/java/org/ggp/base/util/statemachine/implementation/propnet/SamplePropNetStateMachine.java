@@ -19,6 +19,7 @@ import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.architecture.components.Transition;
+import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -73,6 +74,53 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     }
 
+
+    public class propnetBuilder implements Runnable {
+    	private List<Gdl> description;
+
+    	public propnetBuilder(List<Gdl> d) {
+    		this.description = d;
+    	}
+
+    	@Override
+		public void run(){
+    		long start = System.currentTimeMillis();
+            System.out.println("Starting initialize at" + start);
+        	try {
+        		System.out.println("Propnet building starting " + System.currentTimeMillis());
+                propNet = OptimizingPropNetFactory.create(description);
+                System.out.println("Propnet built at " + System.currentTimeMillis());
+                roles = propNet.getRoles();
+                System.out.println("Starting the ordering " + System.currentTimeMillis());
+                ordering = getOrdering();
+                System.out.println("Done getting the ordering " + System.currentTimeMillis());
+
+                // removeAnons();
+
+                // factoring for single player only
+                if (roles.size() == 1 && factor) {
+    	            // factor the propnet, removing any unneeded propsitions
+    	            factorAnalysis();
+
+    	            for (int i = 0; i < subgameLegals.size(); i++) {
+    	            	System.out.println(subgameLegals.get(i).size());
+    	            }
+                }
+
+                identifyLatches();
+
+            } catch (InterruptedException | TransitionDefinitionException e) {
+                throw new RuntimeException(e);
+            }
+        	long end = System.currentTimeMillis();
+        	System.out.println("propnet size: " + propNet.getPropositions().size());
+        	System.out.println("time to build propnet: " + (end - start));
+        	// propNet.renderToFile("propnet-viz.dot");
+        	built = true;
+    	}
+
+    }
+
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -85,41 +133,9 @@ public class SamplePropNetStateMachine extends StateMachine {
     	System.out.println("description " + description);
     	prover.initialize(description);
     	System.out.println("prover post " + System.currentTimeMillis());
-    	/*
-        long start = System.currentTimeMillis();
-        System.out.println("Starting initialize at" + start);
-    	try {
-    		System.out.println("Propnet building starting " + System.currentTimeMillis());
-            propNet = OptimizingPropNetFactory.create(description);
-            System.out.println("Propnet built at " + System.currentTimeMillis());
-            roles = propNet.getRoles();
-            System.out.println("Starting the ordering " + System.currentTimeMillis());
-            ordering = getOrdering();
-            System.out.println("Done getting the ordering " + System.currentTimeMillis());
-
-            // removeAnons();
-
-            // factoring for single player only
-            if (roles.size() == 1 && factor) {
-	            // factor the propnet, removing any unneeded propsitions
-	            factorAnalysis();
-
-	            for (int i = 0; i < subgameLegals.size(); i++) {
-	            	System.out.println(subgameLegals.get(i).size());
-	            }
-            }
-
-            identifyLatches();
-
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    	long end = System.currentTimeMillis();
-    	System.out.println("propnet size: " + propNet.getPropositions().size());
-    	System.out.println("time to build propnet: " + (end - start));
-    	// propNet.renderToFile("propnet-viz.dot");
-    	built = true;
-    	*/
+    	propnetBuilder builder = new propnetBuilder(description);
+    	Thread t = new Thread(builder);
+    	t.start();
     }
 
     /**
