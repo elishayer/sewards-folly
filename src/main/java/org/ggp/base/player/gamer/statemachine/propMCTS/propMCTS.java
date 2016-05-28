@@ -42,11 +42,12 @@ public class propMCTS extends StateMachineGamer
 		}
 	}
 
-	static long DEPTH_TIME = 1500;
-	static long SEARCH_TIME = 2000;
+	static long DEPTH_TIME = 3000;
 	static int LEVEL = 2;
 	static Random r = new Random();
+	static long MIN_SEARCH_TIME = 3000;
 
+	private long searchTime = 3000;
 	private int subgameIndex = -1;
 	private double expansionFactor;
 	private int expansionFactorTotal = 0;
@@ -112,6 +113,7 @@ public class propMCTS extends StateMachineGamer
 
 			List<Integer> chargeList = new ArrayList<Integer>();
 			List<Double> scoreList = new ArrayList<Double>();
+			List<Long> expList = new ArrayList<Long>();
 			for (int i = 0; i < numSubgames; i++) {
 				System.out.println("game: " + i + " of " + numSubgames);
 				chargeList.add(0);
@@ -127,6 +129,7 @@ public class propMCTS extends StateMachineGamer
 				System.out.println("total number of charges: " + chargeList.get(i));
 				System.out.println("total score: " + scoreList.get(i));
 				long expTime = 1 + subgameMetaTimePerGame / chargeList.get(i);
+				expList.add(expTime);
 				System.out.println("observed time per depth charge: " + expTime);
 				double expFactor = expansionFactorTotal / (double) expansionFactorNum;
 				System.out.println("expansion factor: " + expFactor);
@@ -145,6 +148,7 @@ public class propMCTS extends StateMachineGamer
 					subgameIndex = i;
 				}
 			}
+			searchTime = (long) Math.max(MIN_SEARCH_TIME, expList.get(subgameIndex) * 1.5);
 			System.out.println("Num charges: " + numCharges + " | Subgame index: " + subgameIndex);
 		} else {
 			int charges = 0;
@@ -164,6 +168,7 @@ public class propMCTS extends StateMachineGamer
 			if(numCharges == 0) {
 				numCharges = 1;
 			}
+			searchTime = (long) Math.max(MIN_SEARCH_TIME, explorationTime * 1.5);
 			System.out.println("num charges: " + numCharges);
 			System.out.println("");
 		}
@@ -171,7 +176,7 @@ public class propMCTS extends StateMachineGamer
 		int nodesExplored = 0;
 		chargesSent = 0;
 		depth_start = System.currentTimeMillis();
-		while (timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+		while (timeout - System.currentTimeMillis() >= searchTime) {
 			// System.out.println("New select/expand, time left: " + (timeout - System.currentTimeMillis() - SEARCH_TIME));
 			Node selected = select(curNode);
 			expand(selected, machine, getRole());
@@ -223,9 +228,17 @@ public class propMCTS extends StateMachineGamer
 		}
 
 		//selects and expands on a node until time is up or all nodes have been searched
-		while(timeout - System.currentTimeMillis() >= SEARCH_TIME) {
+		long startLoop = System.currentTimeMillis();
+		boolean firstLoop = true;
+		System.out.println(searchTime);
+		while(timeout - System.currentTimeMillis() >= searchTime) {
 			Node selected = select(curState);
 			expand(selected, machine, getRole());
+			if (firstLoop) {
+				firstLoop = false;
+				searchTime = (long) Math.max(1.5 * (System.currentTimeMillis() - startLoop), MIN_SEARCH_TIME);
+				System.out.println(searchTime);
+			}
 		}
 
 		System.out.println("charges sent: " + chargesSent);
@@ -318,8 +331,8 @@ public class propMCTS extends StateMachineGamer
 
     	MachineState newstate = machine.getNextState(node.state, action);
     	double totalscore = 0;
-    	for(int j = 0; j < numCharges; j++) { //place holder #
-    		if((endtime - System.currentTimeMillis() < SEARCH_TIME)) break;
+    	for(int j = 0; j < numCharges; j++) {
+    		if((endtime - System.currentTimeMillis() < searchTime)) break;
     		double score = (double) depthCharge(machine, machine.getRoles(), role, newstate, false, subgameIndex, 0);
     		totalscore += score;
     		chargesSent++;
@@ -369,7 +382,6 @@ public class propMCTS extends StateMachineGamer
         	}
         	state = machine.getNextState(state, actions);
     	}
-
     	return machine.findReward(role, state, gameIndex, level);
     }
 
