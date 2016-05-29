@@ -148,7 +148,6 @@ public class propMCTS extends StateMachineGamer
 					subgameIndex = i;
 				}
 			}
-			searchTime = (long) Math.max(MIN_SEARCH_TIME, expList.get(subgameIndex) * 1.5);
 			System.out.println("Num charges: " + numCharges + " | Subgame index: " + subgameIndex);
 		} else {
 			int charges = 0;
@@ -168,7 +167,6 @@ public class propMCTS extends StateMachineGamer
 			if(numCharges == 0) {
 				numCharges = 1;
 			}
-			searchTime = (long) Math.max(MIN_SEARCH_TIME, explorationTime * 1.5);
 			System.out.println("num charges: " + numCharges);
 			System.out.println("");
 		}
@@ -236,7 +234,6 @@ public class propMCTS extends StateMachineGamer
 			expand(selected, machine, getRole());
 			if (firstLoop) {
 				firstLoop = false;
-				searchTime = (long) Math.max(1.5 * (System.currentTimeMillis() - startLoop), MIN_SEARCH_TIME);
 				System.out.println(searchTime);
 			}
 		}
@@ -259,7 +256,7 @@ public class propMCTS extends StateMachineGamer
 		double bestScore = 0;
 		for (int i = 0; i < curState.children.size(); i++) {
 			System.out.println("move: " + curState.children.get(i).moves.get(roleIndex)+ " | raw score: " + curState.children.get(i).score + " | visits: " + curState.children.get(i).visits + " | true score " + selectfn(curState.children.get(i)));
-			if (curState.children.get(i).score >= bestScore) {
+			if (curState.children.get(i).score >= bestScore || bestMove == null) {
 				bestMove = curState.children.get(i).moves.get(roleIndex);
 				bestScore = curState.children.get(i).score;
 			}
@@ -366,6 +363,9 @@ public class propMCTS extends StateMachineGamer
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int gameIndex, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
     	while(!machine.findTerminalp(state, gameIndex, level)) {
+    		if ((endtime - System.currentTimeMillis() < searchTime)) {
+    			return 0;
+    		}
     		List<Move> actions = new ArrayList<Move>();
 
     		for (int i = 0; i < roles.size(); i++) {
