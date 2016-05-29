@@ -52,8 +52,8 @@ public final class CachedStateMachine extends StateMachine
     }
 
 	@Override
-	public void getDeadStates(Role role) {
-		backingStateMachine.getDeadStates(role);
+	public void setRole(Role role) {
+		backingStateMachine.setRole(role);
 	}
 
     @Override
@@ -74,12 +74,12 @@ public final class CachedStateMachine extends StateMachine
     @Override
     public int getGoal(MachineState state, Role role, int gameIndex, int level) throws GoalDefinitionException
     {
-        Entry entry = getEntry(state);
+    	Entry entry = getEntry(state);
         synchronized (entry)
         {
-            if (!entry.goals.containsKey(role))
+        	if (!entry.goals.containsKey(role))
             {
-                entry.goals.put(role, backingStateMachine.getGoal(state, role, gameIndex, level));
+            	entry.goals.put(role, backingStateMachine.getGoal(state, role, gameIndex, level));
             }
 
             return entry.goals.get(role);

@@ -56,6 +56,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     private ProverStateMachine prover = new ProverStateMachine();
 
     private boolean built = false;
+    private Role role;
 
     @Override
     public long setTime() {
@@ -92,7 +93,7 @@ public class SamplePropNetStateMachine extends StateMachine {
                 System.out.println("Propnet built at " + System.currentTimeMillis());
                 roles = propNet.getRoles();
                 System.out.println("Starting the ordering " + System.currentTimeMillis());
-                ordering = getOrdering();
+                //ordering = getOrdering();
                 System.out.println("Done getting the ordering " + System.currentTimeMillis());
 
                 // removeAnons();
@@ -112,10 +113,14 @@ public class SamplePropNetStateMachine extends StateMachine {
             } catch (InterruptedException | TransitionDefinitionException e) {
                 throw new RuntimeException(e);
             }
+        	getDeadStates();
+
         	long end = System.currentTimeMillis();
+
         	System.out.println("propnet size: " + propNet.getPropositions().size());
         	System.out.println("time to build propnet: " + (end - start));
         	// propNet.renderToFile("propnet-viz.dot");
+
         	built = true;
     	}
 
@@ -144,6 +149,7 @@ public class SamplePropNetStateMachine extends StateMachine {
      */
     @Override
     public boolean isTerminal(MachineState state, int gameIndex, int level) {
+    	long start = System.currentTimeMillis();
     	if (!built) {
     		return prover.isTerminal(state, gameIndex, level);
     	}
@@ -151,14 +157,19 @@ public class SamplePropNetStateMachine extends StateMachine {
         	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
         	if (level >= length) return true;
     	}
+    	//System.out.println("test in terminal " + (getStateFromBase() == state));
     	setPropnet(state, null);
+    	//System.out.println("terminal: " + deadStates);
     	for (Proposition p: deadStates.keySet()) {
     		if (p.getValue()) {
     			System.out.println("deadstate reached");
     			return true;
     		}
     	}
-
+    	//System.out.println("time to check if terminal: " + (System.currentTimeMillis() - start));
+    	//System.out.println("base" + getStateFromBase());
+    	//System.out.println(state);
+    	//if(propNet.getTerminalProposition().getValue()){ int i = 1/0;}
     	return propNet.getTerminalProposition().getValue();
     }
 
@@ -172,6 +183,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role, int gameIndex, int level)
             throws GoalDefinitionException {
+    	System.out.println("goal gotten "+ built);
     	if (!built) {
     		return prover.getGoal(state, role, gameIndex, level);
     	}
@@ -179,8 +191,12 @@ public class SamplePropNetStateMachine extends StateMachine {
         	int length = gameIndex == smallestIndex ? secondSmallest : smallest;
         	if (level >= length) return 0;
     	}
-        setPropnet(state, null);
-    	for(Proposition p: deadStates.keySet()) {
+    	//System.out.println("test in getgoal " + (getStateFromBase() == state));
+    	setPropnet(state, null);
+    	//System.out.println(getStateFromBase());
+
+    	//System.out.println(deadStates);
+        for(Proposition p: deadStates.keySet()) {
     		if(p.getValue()) {
     			System.out.println("exiting with value " + deadStates.get(p));
     			return deadStates.get(p);
@@ -216,8 +232,15 @@ public class SamplePropNetStateMachine extends StateMachine {
     	if (!built) {
     		return prover.getInitialState();
     	}
-    	setPropnet(null, null);
+    	clearPropnet();
+    	//setPropnet(null, null);
     	propNet.getInitProposition().setValue(true);
+    	for(Component c: propNet.getComponents()) {
+    		recalc(c);
+    	}
+
+    	//System.out.println(getStateFromBase());
+    	//int i = 1/0;
     	return getStateFromBase();
     }
 
@@ -249,9 +272,11 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role, int gameIndex)
             throws MoveDefinitionException {
+    	long start = System.currentTimeMillis();
     	if (!built) {
     		return prover.getLegalMoves(state, role, gameIndex);
     	}
+    	//System.out.println("test in find actions " + (getStateFromBase() == state));
     	setPropnet(state, null);
     	List<Role> roles = propNet.getRoles();
     	Set<Proposition> legals = new HashSet<Proposition>();
@@ -272,6 +297,8 @@ public class SamplePropNetStateMachine extends StateMachine {
         		}
     		}
     	}
+    	//System.out.println(getStateFromBase());
+    	//System.out.println("time to get legals: " + (System.currentTimeMillis() - start));
         return actions;
     }
 
@@ -306,11 +333,15 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
+    	long start = System.currentTimeMillis();
     	if (!built) {
     		return prover.getNextState(state, moves);
     	}
+    	//System.out.println(getStateFromBase());
+    	//System.out.println("test in next state " + (getStateFromBase() == state));
     	setPropnet(state, moves);
-        return getStateFromBase();
+    	//System.out.println("time to get next state: " + (System.currentTimeMillis() - start));
+    	return getStateFromBase();
     }
 
     /**
@@ -430,6 +461,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Set<GdlSentence> bases = basesMap.keySet();
 
     	for (GdlSentence base : bases) {
+    		basesMap.get(base).setLastValue(basesMap.get(base).getValue());
     		basesMap.get(base).setValue(sentences.contains(base));
     	}
     }
@@ -448,6 +480,7 @@ public class SamplePropNetStateMachine extends StateMachine {
     	Set<GdlSentence> inputs = inputMap.keySet();
 
     	for (GdlSentence input : inputs) {
+    		inputMap.get(input).setLastValue(inputMap.get(input).getValue());
     		inputMap.get(input).setValue(doeses.contains(input));
     	}
     }
@@ -456,8 +489,11 @@ public class SamplePropNetStateMachine extends StateMachine {
      * Mark all propositions in the propnet as false
      */
     private void clearPropnet() {
-    	for (Proposition p : propNet.getPropositions()) {
-    		p.setValue(false);
+    	for (Component c : propNet.getComponents()) {
+    		c.setLastValue(false);
+    		if(propNet.getPropositions().contains(c)) {
+    			((Proposition) c).setValue(false);
+    		}
     	}
     }
 
@@ -472,11 +508,34 @@ public class SamplePropNetStateMachine extends StateMachine {
     	clearPropnet();
     	if (state != null) markBases(state);
     	if (moves != null) markActions(moves);
-    	for (Proposition p : ordering) {
-    		p.setValue(p.getSingleInput().getValue());
+    	for(Component c: propNet.getComponents()) {
+    		recalc(c);
     	}
 
+    	//for (Proposition p : ordering) {
+    	//	p.setValue(p.getSingleInput().getValue());
+    	//}
+
     	setTime += System.currentTimeMillis() - start;
+    }
+
+    private void recalc(Component c){
+    	c.setLastValue(c.getValue());
+    	boolean newValue;
+    	if(c instanceof Proposition) {
+    		Proposition p = (Proposition)c;
+    		if(p.getInputs().size() != 0 && !propNet.getBasePropositions().containsValue(p)) {
+    			p.setValue(p.getSingleInput().getValue());
+    		}
+    		newValue = c.getValue();
+    	} else {
+    		newValue = c.getValue();
+    	}
+    	if(c.getLastValue() != newValue && !(c instanceof Transition)) {
+    		for(Component out: c.getOutputs()) {
+    			recalc(out);
+    		}
+    	}
     }
 
     /**
@@ -546,6 +605,7 @@ public class SamplePropNetStateMachine extends StateMachine {
             }
 
         }
+
         return new MachineState(contents);
     }
 
@@ -697,8 +757,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     }
 
     @Override
-    public void getDeadStates(Role role) {
-    	if (!built) return;
+    public void setRole(Role r){
+    	role = r;
+    }
+
+
+    private void getDeadStates() {
     	Set<Proposition> goalStates = propNet.getGoalPropositions().get(role);
     	Set<Component> visited = new HashSet<Component>();
 
