@@ -19,6 +19,17 @@ public abstract class Component implements Serializable
     /** The outputs of the component. */
     private final Set<Component> outputs;
 
+    private boolean curState;
+    private boolean lastValue;
+
+    public void setLastValue(boolean state) {
+    	this.lastValue = state;
+    }
+
+    public boolean getLastValue(){
+    	return lastValue;
+    }
+
     /**
      * Creates a new Component with no inputs or outputs.
      */
