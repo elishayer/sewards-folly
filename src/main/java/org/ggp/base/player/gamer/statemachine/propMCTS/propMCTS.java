@@ -1,6 +1,7 @@
 package org.ggp.base.player.gamer.statemachine.propMCTS;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -62,6 +63,17 @@ public class propMCTS extends StateMachineGamer
 	private long endtime;
 
 	boolean first = true;
+
+	boolean heurustic = false;
+	float max_moves;
+	float opp_max_moves;
+	List<Double> weights = Arrays.asList(0.333, 0.333, 0.333);
+	List<Double> currWeights = weights;
+	int maxMetaReward = 0;
+
+	static int L = 2;
+	int level = 0;
+	int hnum = 0;
 
 	@Override
 	public String getName() {
@@ -194,6 +206,17 @@ public class propMCTS extends StateMachineGamer
     	chargesSent = 0;
 
     	System.out.println("NEW SELECT");
+    	/*
+    	if(hnum == 5) {
+    		hnum = 0;
+    		heurustic = false;
+    		System.out.println("back to propnet");
+    	}
+    	*/
+    	if(heurustic) {
+    		return heuristicMove(timeout);
+    	}
+
 
 		numCharges = (int) ((timeout - System.currentTimeMillis()) / (explorationTime * Math.pow(expansionFactor, LEVEL)));
 		if (numCharges == 0) {
@@ -229,6 +252,7 @@ public class propMCTS extends StateMachineGamer
 		long startLoop = System.currentTimeMillis();
 		boolean firstLoop = true;
 		System.out.println(searchTime);
+		int numSelected = 0;
 		while(timeout - System.currentTimeMillis() >= searchTime) {
 			Node selected = select(curState);
 			expand(selected, machine, getRole());
@@ -236,6 +260,11 @@ public class propMCTS extends StateMachineGamer
 				firstLoop = false;
 				System.out.println(searchTime);
 			}
+			numSelected++;
+		}
+		if(numSelected < 5) {
+			System.out.println("switching to H");
+			heurustic = true;
 		}
 
 		System.out.println("charges sent: " + chargesSent);
@@ -412,5 +441,130 @@ public class propMCTS extends StateMachineGamer
     			recursiveActionHelper(roles, machine, state, i + 1, dest, actions);
     		}
     	}
+    }
+
+
+    public Move heuristicMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+    {
+    	hnum++;
+    	max_moves = 0;
+    	opp_max_moves = 0;
+
+    	long start = System.currentTimeMillis();
+
+		StateMachine machine = getStateMachine();
+
+		List<Move> moves = machine.findLegals(getRole(), getCurrentState(), subgameIndex);
+
+        // Build the minimax tree
+		MachineState state = getCurrentState();
+		List<Role> roles = getStateMachine().findRoles();
+		Role role = getRole();
+
+		Move best = bestMove(machine, state, roles, role, timeout);
+
+		long stop = System.currentTimeMillis();
+
+        notifyObservers(new GamerSelectedMoveEvent(moves, best, stop - start));
+        return best;
+    }
+
+    private Move bestMove(StateMachine machine, MachineState state, List<Role> roles, Role role, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    	List<Move> actions = machine.findLegals(role, state, subgameIndex);
+    	if(numOppMoves(machine, roles, role, state) > opp_max_moves) {
+    		opp_max_moves = numOppMoves(machine, roles, role, state);
+    	}
+    	if(actions.size() > max_moves) {
+    		max_moves = actions.size();
+    	}
+
+    	// the best action and score
+    	Move action = actions.get(0);
+    	float score = 0;
+
+    	for (int i = 0; i < actions.size(); i++) {
+    		if(timeout - System.currentTimeMillis() < searchTime) break;
+    		System.out.println("looked at action " + i);
+    		float result = minScore(machine, state, roles, role, actions.get(i), 0, 100, timeout);
+    		if (result == 100) {
+    			return actions.get(i);
+    		}
+    		if (result > score) {
+    			score = result;
+    			action = actions.get(i);
+    		}
+    	}
+    	return action;
+    }
+
+    private float minScore(StateMachine machine, MachineState state, List<Role> roles, Role role, Move action, float alpha, float beta, long timeout) throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+    	level++;
+    	List<List<Move>> actions = getActions(roles, machine, state);
+    	if(numOppMoves(machine, roles, role, state) > opp_max_moves) {
+    		opp_max_moves = numOppMoves(machine, roles, role, state);
+    	}
+    	if(actions.size() > max_moves) {
+    		max_moves = actions.size();
+    	}
+
+    	for (int i = 0; i < actions.size(); i++) {
+    		if(timeout - System.currentTimeMillis() < searchTime) break;
+    		MachineState newState = machine.findNext(actions.get(i), state);
+    		float result = maxScore(machine, roles, role, newState, alpha, beta, timeout);
+    		beta = Math.min(beta, result);
+    		if (beta <= alpha) {
+    			return alpha;
+    		}
+    	}
+    	level--;
+    	return beta;
+    }
+
+    private float maxScore(StateMachine machine, List<Role> roles, Role role, MachineState state, float alpha, float beta, long timeout) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	// System.out.println("alpha: " + alpha + " | beta: " + beta);
+    	if (machine.findTerminalp(state, subgameIndex, 0)) {
+    		return machine.findReward(role, state, subgameIndex, 0);
+    	}
+
+    	if(timeout - System.currentTimeMillis() < searchTime || level > L) {
+    		List<Float> values = new ArrayList<Float>();
+
+    		values.add(machine.findLegals(role, state, subgameIndex).size()/max_moves);
+    		values.add(1 - (numOppMoves(machine, roles, role, state)/ opp_max_moves));
+    		values.add((float)machine.findReward(role, state, subgameIndex, 0));
+    		float score = 0;
+    		for(int i = 0; i < currWeights.size(); i++) {
+    			score += currWeights.get(i) * values.get(i);
+    		}
+    		return score;
+
+    	}
+
+    	List<Move> actions = machine.findLegals(role, state, subgameIndex);
+    	if(numOppMoves(machine, roles, role, state) > opp_max_moves) {
+    		opp_max_moves = numOppMoves(machine, roles, role, state);
+    	}
+    	if(actions.size() > max_moves) {
+    		max_moves = actions.size();
+    	}
+
+    	for (int i = 0; i < actions.size(); i++) {
+    		float result = minScore(machine, state, roles, role, actions.get(i), alpha, beta, timeout);
+    		alpha = Math.max(alpha, result);
+    		if (alpha >= beta) {
+    			return beta;
+    		}
+    	}
+    	return alpha;
+    }
+
+    private int numOppMoves(StateMachine machine, List<Role> roles, Role role, MachineState state) throws MoveDefinitionException {
+		int opp_moves = 0;
+    	for(int i = 0; i < roles.size(); i++) {
+			if(roles.get(i) != role) {
+				opp_moves += machine.findLegals(roles.get(i), state, subgameIndex).size();
+			}
+		}
+	    return opp_moves;
     }
 }
