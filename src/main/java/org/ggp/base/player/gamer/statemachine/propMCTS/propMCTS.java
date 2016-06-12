@@ -112,7 +112,7 @@ public class propMCTS extends StateMachineGamer
 		endtime = timeout;
 		long depth_start = System.currentTimeMillis();
 		StateMachine machine = getStateMachine();
-		machine.getDeadStates(getRole());
+		machine.setRole(getRole());
 		List<Role> roles = machine.getRoles();
 
 		int numSubgames = machine.getNumSubgames();
@@ -391,6 +391,7 @@ public class propMCTS extends StateMachineGamer
     }
 
     private double depthCharge(StateMachine machine, List<Role> roles, Role role, MachineState state, boolean meta, int gameIndex, int level) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	System.out.println("start state: " + state);
     	while(!machine.findTerminalp(state, gameIndex, level)) {
     		if ((endtime - System.currentTimeMillis() < searchTime)) {
     			return 0;
@@ -410,7 +411,9 @@ public class propMCTS extends StateMachineGamer
         		}
         	}
         	state = machine.getNextState(state, actions);
+        	System.out.println("new state: " + state);
     	}
+    	System.out.println("ended");
     	return machine.findReward(role, state, gameIndex, level);
     }
 
